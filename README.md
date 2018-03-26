@@ -1,2 +1,2 @@
 # BaLSaKGAN-
-Text To Image Synthesis usgin Generative Adversarial Networks
+Text To Image Synthesis usgin Generative Adversarial Networks...
