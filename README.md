@@ -1,6 +1,7 @@
 # BaLSaKGAN-
 Text To Image Synthesis usgin Generative Adversarial Networks...
-Download these files-http://images.cocodataset.org/zips/val2014.zip
+Download these files-
+Glove- https://nlp.stanford.edu/software/GloVe-1.2.zip
 MSCOCO Validation images-http://images.cocodataset.org/zips/val2014.zip
 MSCOCO Train/Val Captions-http://images.cocodataset.org/annotations/annotations_trainval2014.zip
 
