@@ -13,8 +13,8 @@ cfg = __C
 __C.DATASET_NAME = 'MSCOCO'
 __C.EMBEDDING_TYPE = ''
 __C.CONFIG_NAME = ''
-__C.GPU_ID = '0'
-__C.CUDA = False
+__C.GPU_ID = '0,1'
+__C.CUDA = True
 __C.WORKERS = 1
 
 __C.NET_G = ''

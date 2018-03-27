@@ -6,8 +6,8 @@ GPU_ID: '0,1'
 CUDA: True
 Z_DIM: 100
 DATA_DIR: '/pylon5/ir5fp2p/satyenr/val2014'
-ANN_FILE: '/pylon5/ir5fp2p/satyenr/val2014/annotations/captions_val2014.json'
-EMB_MODEL: '/pylon5/ir5fp2p/satyenr/val2014/GloVe/glove.6B.50d.txt'
+ANN_FILE: '/pylon5/ir5fp2p/satyenr/annotations/captions_val2014.json'
+EMB_MODEL: '/pylon5/ir5fp2p/satyenr/GloVe/glove.6B.50d.txt'
 IMSIZE: 64
 WORKERS: 4
 STAGE: 1
