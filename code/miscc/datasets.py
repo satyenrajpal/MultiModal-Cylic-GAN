@@ -124,13 +124,9 @@ class TextImageDataset(data.Dataset):
         #     print('embeddings: ', embeddings.shape)
         #Pick one sentence at random and pass an embedding of that in format 
         # (number_of_words x embedding_dim) format
-        sentence=captions[np.random.randint(0,len(captions)-1)].split()
-        for i in range(len(sentence)): #Remove full stop
-            sentence[i]=sentence[i].replace(".","").lower()
-            if sentence[i]==None:
-                print("LLLL")
+        sentence=captions[np.random.randint(0,len(captions)-1)].replace(".","").lower().split()
+        # print(sentence)
         embeddings=[self.glove.get(x) for x in sentence]
-
         return np.array(embeddings)
 
     # def load_class_id(self, data_dir, total_num):
@@ -166,10 +162,12 @@ class TextImageDataset(data.Dataset):
         embeddings = self.get_embedding(captions)
         # img_name = '%s/images/%s.jpg' % (data_dir, key)
         # img = self.get_img(img_name, bbox)
-
-        embedding_ix = random.randint(0, len(embeddings)-1)
-        embedding = embeddings[embedding_ix]
-        print(embedding.shape)
+        while(True):
+        	embedding_ix = random.randint(0, len(embeddings)-1)
+        	embedding = embeddings[embedding_ix]
+        	if(embedding is not None):
+        		break
+        # print(embedding.shape)
         if self.target_transform is not None:
             embedding = self.target_transform(embedding)
         return img, embedding

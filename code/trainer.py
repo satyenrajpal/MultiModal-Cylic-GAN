@@ -219,12 +219,11 @@ class GANTrainer(object):
                     if lr_fake is not None:
                         save_img_results(None, lr_fake, epoch, self.image_dir)
 
-                print('''[%d/%d][%d/%d] Loss_D: %.4f Loss_G: %.4f Loss_KL: %.4f
-                            Loss_real: %.4f Loss_wrong:%.4f Loss_fake %.4f
-                            Total Time: %.2fsec'''
-                  % (epoch, self.max_epoch, i, len(data_loader),
-                     errD.data[0], errG.data[0], kl_loss.data[0],
-                     errD_real, errD_wrong, errD_fake, (end_t - start_t)))
+                print("One iteration complete")
+                print('''Loss_D: %.4f Loss_G: %.4f Loss_KL: %.4f
+                     Loss_real: %.4f Loss_wrong:%.4f Loss_fake %.4f'''
+                     %(errD.data[0], errG.data[0], kl_loss.data[0],errD_real, 
+                        errD_wrong, errD_fake))
             
             end_t = time.time()
                 
