@@ -39,8 +39,8 @@ if __name__ == "__main__":
         cfg_from_file(args.cfg_file)
     if args.gpu_id != -1:
         cfg.GPU_ID = args.gpu_id
-    if args.data_dir != '':
-        cfg.DATA_DIR = args.data_dir
+    #if args.data_dir != '':
+     #   cfg.DATA_DIR = args.data_dir
     print('Using config:')
     pprint.pprint(cfg)
     if args.manualSeed is None:
