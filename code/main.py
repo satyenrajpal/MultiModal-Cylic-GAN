@@ -28,7 +28,7 @@ def parse_args():
                         help='optional config file',
                         default='birds_stage1.yml', type=str)
     parser.add_argument('--gpu',  dest='gpu_id', type=str, default='0')
-    parser.add_argument('--data_dir', dest='data_dir', type=str, default='')
+    parser.add_argument('--output_dir', dest='output_dir', type=str, default='')
     parser.add_argument('--manualSeed', type=int, help='manual seed',dest='manualSeed')
     args = parser.parse_args()
     return args
@@ -51,8 +51,8 @@ if __name__ == "__main__":
         torch.cuda.manual_seed_all(args.manualSeed)
     now = datetime.datetime.now(dateutil.tz.tzlocal())
     timestamp = now.strftime('%Y_%m_%d_%H_%M_%S')
-    output_dir = '../output/%s_%s_%s' % \
-                 (cfg.DATASET_NAME, cfg.CONFIG_NAME, timestamp)
+    output_dir = '%s/%s_%s_%s' % \
+                 (args.output_dir,cfg.DATASET_NAME, cfg.CONFIG_NAME, timestamp)
     #mkdir_p(output_dir)     
     num_gpu = len(cfg.GPU_ID.split(','))
     if cfg.TRAIN.FLAG:

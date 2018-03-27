@@ -12,7 +12,6 @@ import os.path
 import pickle
 import random
 import numpy as np
-#import pandas as pd
 import torch
 
 from miscc.config import cfg

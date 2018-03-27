@@ -44,8 +44,8 @@ class GANTrainer(object):
 
         self.num_gpus = len(self.gpus)
         self.batch_size = cfg.TRAIN.BATCH_SIZE * self.num_gpus
-        #torch.cuda.set_device(self.gpus[0])
-        #cudnn.benchmark = True
+        torch.cuda.set_device(self.gpus[0])
+        cudnn.benchmark = True
 
     # ############# For training stageI GAN ############# No Need to do anything
     def load_network_stageI(self):
@@ -171,9 +171,9 @@ class GANTrainer(object):
                 ######################################################
                 noise.data.normal_(0, 1)
                 inputs = (txt_embedding, noise)
-                #_, fake_imgs, mu, logvar = \
-                #    nn.parallel.data_parallel(netG, inputs, self.gpus)
-                _,fake_imgs,mu,logvar=netG(inputs[0],inputs[1])
+                _, fake_imgs, mu, logvar = \
+                    nn.parallel.data_parallel(netG, inputs, self.gpus)
+                #_,fake_imgs,mu,logvar=netG(inputs[0],inputs[1])
                 ############################
                 # (3) Update D network
                 ###########################
@@ -212,7 +212,6 @@ class GANTrainer(object):
                     # self.summary_writer.add_summary(summary_KL, count)
 
                     # save the image result for each epoch
-                    #KRISHNA!!!!!!!!!!!!!!!!!!!!!
                     inputs = (txt_embedding, fixed_noise)
                     lr_fake, fake, _, _ = \
                         nn.parallel.data_parallel(netG, inputs, self.gpus)
@@ -220,7 +219,7 @@ class GANTrainer(object):
                     if lr_fake is not None:
                         save_img_results(None, lr_fake, epoch, self.image_dir)
 
-                    print('''[%d/%d][%d/%d] Loss_D: %.4f Loss_G: %.4f Loss_KL: %.4f
+                print('''[%d/%d][%d/%d] Loss_D: %.4f Loss_G: %.4f Loss_KL: %.4f
                             Loss_real: %.4f Loss_wrong:%.4f Loss_fake %.4f
                             Total Time: %.2fsec'''
                   % (epoch, self.max_epoch, i, len(data_loader),
