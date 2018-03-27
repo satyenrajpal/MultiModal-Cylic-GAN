@@ -12,140 +12,168 @@ import os.path
 import pickle
 import random
 import numpy as np
-import pandas as pd
+#import pandas as pd
+import torch
 
 from miscc.config import cfg
+import torchvision.datasets as dset
+import torchvision.transforms as transforms
 
-
-class TextDataset(data.Dataset):
-    def __init__(self, data_dir, split='train', embedding_type='cnn-rnn',
-                 imsize=64, transform=None, target_transform=None):
+class TextImageDataset(data.Dataset):
+    def __init__(self, data_dir, ann_file, embedding_type='cnn-rnn',
+                 emb_model=None,imsize=64, transform=None, target_transform=None):
 
         self.transform = transform
         self.target_transform = target_transform
         self.imsize = imsize
-        self.data = []
-        self.data_dir = data_dir
-        if data_dir.find('birds') != -1:
-            self.bbox = self.load_bbox()
-        else:
-            self.bbox = None
-        split_dir = os.path.join(data_dir, split)
-
-        self.filenames = self.load_filenames(split_dir)
-        self.embeddings = self.load_embedding(split_dir, embedding_type)
-        self.class_id = self.load_class_id(split_dir, len(self.filenames))
+        self.glove=self.load_embedding(emb_model)
+        # if data_dir.find('birds') != -1:
+        #     self.bbox = self.load_bbox()
+        # else:
+        #     self.bbox = None
+        # split_dir = os.path.join(data_dir, split)
+        self.cap = dset.CocoCaptions(root = data_dir,
+                annFile = ann_file)
+        
+        # self.filenames = self.load_filenames(split_dir)
+        # self.embeddings = self.load_embedding(split_dir, embedding_type)
+        # self.class_id = self.load_class_id(split_dir, len(self.filenames))
         # self.captions = self.load_all_captions()
 
-    def get_img(self, img_path, bbox):
-        img = Image.open(img_path).convert('RGB')
-        width, height = img.size
-        if bbox is not None:
-            R = int(np.maximum(bbox[2], bbox[3]) * 0.75)
-            center_x = int((2 * bbox[0] + bbox[2]) / 2)
-            center_y = int((2 * bbox[1] + bbox[3]) / 2)
-            y1 = np.maximum(0, center_y - R)
-            y2 = np.minimum(height, center_y + R)
-            x1 = np.maximum(0, center_x - R)
-            x2 = np.minimum(width, center_x + R)
-            img = img.crop([x1, y1, x2, y2])
-        load_size = int(self.imsize * 76 / 64)
-        img = img.resize((load_size, load_size), PIL.Image.BILINEAR)
-        if self.transform is not None:
-            img = self.transform(img)
-        return img
+    # def get_img(self, img_path, bbox):
+    #     img = Image.open(img_path).convert('RGB')
+    #     width, height = img.size
+    #     # if bbox is not None:
+    #     #     R = int(np.maximum(bbox[2], bbox[3]) * 0.75)
+    #     #     center_x = int((2 * bbox[0] + bbox[2]) / 2)
+    #     #     center_y = int((2 * bbox[1] + bbox[3]) / 2)
+    #     #     y1 = np.maximum(0, center_y - R)
+    #     #     y2 = np.minimum(height, center_y + R)
+    #     #     x1 = np.maximum(0, center_x - R)
+    #     #     x2 = np.minimum(width, center_x + R)
+    #     #     img = img.crop([x1, y1, x2, y2])
+    #     load_size = int(self.imsize * 76 / 64)
+    #     img = img.resize((load_size, load_size), PIL.Image.BILINEAR)
+    #     if self.transform is not None:
+    #         img = self.transform(img)
+    #     return img
 
-    def load_bbox(self):
-        data_dir = self.data_dir
-        bbox_path = os.path.join(data_dir, 'CUB_200_2011/bounding_boxes.txt')
-        df_bounding_boxes = pd.read_csv(bbox_path,
-                                        delim_whitespace=True,
-                                        header=None).astype(int)
-        #
-        filepath = os.path.join(data_dir, 'CUB_200_2011/images.txt')
-        df_filenames = \
-            pd.read_csv(filepath, delim_whitespace=True, header=None)
-        filenames = df_filenames[1].tolist()
-        print('Total filenames: ', len(filenames), filenames[0])
-        #
-        filename_bbox = {img_file[:-4]: [] for img_file in filenames}
-        numImgs = len(filenames)
-        for i in xrange(0, numImgs):
-            # bbox = [x-left, y-top, width, height]
-            bbox = df_bounding_boxes.iloc[i][1:].tolist()
+    # def load_bbox(self):
+    #     data_dir = self.data_dir
+    #     bbox_path = os.path.join(data_dir, 'CUB_200_2011/bounding_boxes.txt')
+    #     df_bounding_boxes = pd.read_csv(bbox_path,
+    #                                     delim_whitespace=True,
+    #                                     header=None).astype(int)
+    #     #
+    #     filepath = os.path.join(data_dir, 'CUB_200_2011/images.txt')
+    #     df_filenames = \
+    #         pd.read_csv(filepath, delim_whitespace=True, header=None)
+    #     filenames = df_filenames[1].tolist()
+    #     print('Total filenames: ', len(filenames), filenames[0])
+    #     #
+    #     filename_bbox = {img_file[:-4]: [] for img_file in filenames}
+    #     numImgs = len(filenames)
+    #     for i in xrange(0, numImgs):
+    #         # bbox = [x-left, y-top, width, height]
+    #         bbox = df_bounding_boxes.iloc[i][1:].tolist()
 
-            key = filenames[i][:-4]
-            filename_bbox[key] = bbox
-        #
-        return filename_bbox
+    #         key = filenames[i][:-4]
+    #         filename_bbox[key] = bbox
+    #     #
+    #     return filename_bbox
+    # def load_captions(self, caption_name):
+    #     cap_path = caption_name
+    #     with open(cap_path, "r") as f:
+    #         captions = f.read().decode('utf8').split('\n')
+    #     captions = [cap.replace("\ufffd\ufffd", " ")
+    #                 for cap in captions if len(cap) > 0]
+    #     return captions
 
-    def load_all_captions(self):
-        caption_dict = {}
-        for key in self.filenames:
-            caption_name = '%s/text/%s.txt' % (self.data_dir, key)
-            captions = self.load_captions(caption_name)
-            caption_dict[key] = captions
-        return caption_dict
+    # def load_all_captions(self):
+    #     caption_dict = {}
+    #     for key in self.filenames:
+    #         caption_name = '%s/text/%s.txt' % (self.data_dir, key)
+    #         captions = self.load_captions(caption_name)
+    #         caption_dict[key] = captions
+    #     return caption_dict
 
-    def load_captions(self, caption_name):
-        cap_path = caption_name
-        with open(cap_path, "r") as f:
-            captions = f.read().decode('utf8').split('\n')
-        captions = [cap.replace("\ufffd\ufffd", " ")
-                    for cap in captions if len(cap) > 0]
-        return captions
+    def load_embedding(self,emb_model):
+        """
+        creates a dictionary mapping words to vectors from a file in glove format.
+        """
+        with open(emb_model) as f:
+            glove = {}
+            for line in f.readlines():
+                values = line.split()
+                word = values[0]
+                vector = np.array(values[1:], dtype='float32')
+                glove[word] = vector
+        return glove
 
-    def load_embedding(self, data_dir, embedding_type):
-        if embedding_type == 'cnn-rnn':
-            embedding_filename = '/char-CNN-RNN-embeddings.pickle'
-        elif embedding_type == 'cnn-gru':
-            embedding_filename = '/char-CNN-GRU-embeddings.pickle'
-        elif embedding_type == 'skip-thought':
-            embedding_filename = '/skip-thought-embeddings.pickle'
+    def get_embedding(self, captions):
+        # #if embedding_type == 'cnn-rnn':
+        #     embedding_filename = '/char-CNN-RNN-embeddings.pickle'
+        # elif embedding_type == 'cnn-gru':
+        #     embedding_filename = '/char-CNN-GRU-embeddings.pickle'
+        # elif embedding_type == 'skip-thought':
+        #     embedding_filename = '/skip-thought-embeddings.pickle'
 
-        with open(data_dir + embedding_filename, 'rb') as f:
-            embeddings = pickle.load(f)
-            embeddings = np.array(embeddings)
-            # embedding_shape = [embeddings.shape[-1]]
-            print('embeddings: ', embeddings.shape)
-        return embeddings
+        # with open(data_dir + embedding_filename, 'rb') as f:
+        #     embeddings = pickle.load(f)
+        #     embeddings = np.array(embeddings)
+        #     # embedding_shape = [embeddings.shape[-1]]
+        #     print('embeddings: ', embeddings.shape)
+        #Pick one sentence at random and pass an embedding of that in format 
+        # (number_of_words x embedding_dim) format
+        sentence=captions[np.random.randint(0,len(captions)-1)].split()
+        for i in range(len(sentence)): #Remove full stop
+            sentence[i]=sentence[i].replace(".","").lower()
+            if sentence[i]==None:
+                print("LLLL")
+        embeddings=[self.glove.get(x) for x in sentence]
 
-    def load_class_id(self, data_dir, total_num):
-        if os.path.isfile(data_dir + '/class_info.pickle'):
-            with open(data_dir + '/class_info.pickle', 'rb') as f:
-                class_id = pickle.load(f)
-        else:
-            class_id = np.arange(total_num)
-        return class_id
+        return np.array(embeddings)
 
-    def load_filenames(self, data_dir):
-        filepath = os.path.join(data_dir, 'filenames.pickle')
-        with open(filepath, 'rb') as f:
-            filenames = pickle.load(f)
-        print('Load filenames from: %s (%d)' % (filepath, len(filenames)))
-        return filenames
+    # def load_class_id(self, data_dir, total_num):
+    #     if os.path.isfile(data_dir + '/class_info.pickle'):
+    #         with open(data_dir + '/class_info.pickle', 'rb') as f:
+    #             class_id = pickle.load(f)
+    #     else:
+    #         class_id = np.arange(total_num)
+    #     return class_id
+
+    # def load_filenames(self, data_dir):
+    #     filepath = os.path.join(data_dir, 'filenames.pickle')
+    #     with open(filepath, 'rb') as f:
+    #         filenames = pickle.load(f)
+    #     print('Load filenames from: %s (%d)' % (filepath, len(filenames)))
+    #     return filenames
 
     def __getitem__(self, index):
-        key = self.filenames[index]
+        # key = self.filenames[index]
         # cls_id = self.class_id[index]
         #
-        if self.bbox is not None:
-            bbox = self.bbox[key]
-            data_dir = '%s/CUB_200_2011' % self.data_dir
-        else:
-            bbox = None
-            data_dir = self.data_dir
+        # if self.bbox is not None:
+        #     bbox = self.bbox[key]
+        #     data_dir = '%s/CUB_200_2011' % self.data_dir
+        # else:
+        # bbox = None
+        # data_dir = self.data_dir
+        img,captions=self.cap[index]
 
-        # captions = self.captions[key]
-        embeddings = self.embeddings[index, :, :]
-        img_name = '%s/images/%s.jpg' % (data_dir, key)
-        img = self.get_img(img_name, bbox)
+        img=np.array(img)
+        if self.transform is not None:
+            img = self.transform(img)    
+        embeddings = self.get_embedding(captions)
+        # img_name = '%s/images/%s.jpg' % (data_dir, key)
+        # img = self.get_img(img_name, bbox)
 
-        embedding_ix = random.randint(0, embeddings.shape[0]-1)
-        embedding = embeddings[embedding_ix, :]
+        embedding_ix = random.randint(0, len(embeddings)-1)
+        embedding = embeddings[embedding_ix]
+        print(embedding.shape)
         if self.target_transform is not None:
             embedding = self.target_transform(embedding)
         return img, embedding
 
     def __len__(self):
-        return len(self.filenames)
+        return len(self.cap)

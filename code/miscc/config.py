@@ -10,17 +10,19 @@ __C = edict()
 cfg = __C
 
 # Dataset name: flowers, birds
-__C.DATASET_NAME = 'birds'
-__C.EMBEDDING_TYPE = 'cnn-rnn'
+__C.DATASET_NAME = 'MSCOCO'
+__C.EMBEDDING_TYPE = ''
 __C.CONFIG_NAME = ''
 __C.GPU_ID = '0'
-__C.CUDA = True
-__C.WORKERS = 6
+__C.CUDA = False
+__C.WORKERS = 1
 
 __C.NET_G = ''
 __C.NET_D = ''
 __C.STAGE1_G = ''
-__C.DATA_DIR = ''
+__C.DATA_DIR = '/media/satyen/d73f90fb-89d2-4cd2-b448-a96b558e5b72/satyen/GitHub_repos/cocoapi/val2014'
+__C.ANN_FILE = '/media/satyen/d73f90fb-89d2-4cd2-b448-a96b558e5b72/satyen/GitHub_repos/cocoapi/annotations/captions_val2014.json'
+__C.EMB_MODEL= '/media/satyen/d73f90fb-89d2-4cd2-b448-a96b558e5b72/satyen/GitHub_repos/GloVe/glove.6B.50d.txt'
 __C.VIS_COUNT = 64
 
 __C.Z_DIM = 100
@@ -51,7 +53,7 @@ __C.GAN.GF_DIM = 128
 __C.GAN.R_NUM = 4
 
 __C.TEXT = edict()
-__C.TEXT.DIMENSION = 1024
+__C.TEXT.DIMENSION = 50
 
 
 def _merge_a_into_b(a, b):
@@ -61,9 +63,9 @@ def _merge_a_into_b(a, b):
     if type(a) is not edict:
         return
 
-    for k, v in a.iteritems():
+    for k, v in a.items():
         # a must specify keys that are in b
-        if not b.has_key(k):
+        if k not in b:
             raise KeyError('{} is not a valid config key'.format(k))
 
         # the types must match, too

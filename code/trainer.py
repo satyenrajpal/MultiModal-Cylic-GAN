@@ -21,11 +21,11 @@ from miscc.utils import KL_loss
 from miscc.utils import compute_discriminator_loss, compute_generator_loss
 
 from tensorboard import summary
-from tensorboard import FileWriter
+#from tensorboard import FileWriter
 
 
 class GANTrainer(object):
-    def __init__(self, output_dir):
+    def __init__(self, output_dir):#
         if cfg.TRAIN.FLAG:
             self.model_dir = os.path.join(output_dir, 'Model')
             self.image_dir = os.path.join(output_dir, 'Image')
@@ -33,17 +33,19 @@ class GANTrainer(object):
             mkdir_p(self.model_dir)
             mkdir_p(self.image_dir)
             mkdir_p(self.log_dir)
-            self.summary_writer = FileWriter(self.log_dir)
+            #self.summary_writer = FileWriter(self.log_dir)
 
         self.max_epoch = cfg.TRAIN.MAX_EPOCH
         self.snapshot_interval = cfg.TRAIN.SNAPSHOT_INTERVAL
+        self.gpus=None
+        if cfg.GPU_ID is not None:
+            s_gpus = cfg.GPU_ID.split(',')
+            self.gpus = [int(ix) for ix in s_gpus]
 
-        s_gpus = cfg.GPU_ID.split(',')
-        self.gpus = [int(ix) for ix in s_gpus]
         self.num_gpus = len(self.gpus)
         self.batch_size = cfg.TRAIN.BATCH_SIZE * self.num_gpus
-        torch.cuda.set_device(self.gpus[0])
-        cudnn.benchmark = True
+        #torch.cuda.set_device(self.gpus[0])
+        #cudnn.benchmark = True
 
     # ############# For training stageI GAN ############# No Need to do anything
     def load_network_stageI(self):
@@ -111,12 +113,13 @@ class GANTrainer(object):
             netD.cuda()
         return netG, netD
 
+
     def train(self, data_loader, stage=1):
         if stage == 1:
             netG, netD = self.load_network_stageI()
         else:
             netG, netD = self.load_network_stageII()
-
+        #######
         nz = cfg.Z_DIM
         batch_size = self.batch_size
         noise = Variable(torch.FloatTensor(batch_size, nz))
@@ -157,21 +160,20 @@ class GANTrainer(object):
                 ######################################################
                 # (1) Prepare training data
                 ######################################################
-                real_img_cpu, txt_embedding = data
+                real_img_cpu, txt_embedding = data 
                 real_imgs = Variable(real_img_cpu)
-                txt_embedding = Variable(txt_embedding)
+                txt_embedding = Variable(txt_embedding,requires_grad=False) 
                 if cfg.CUDA:
                     real_imgs = real_imgs.cuda()
-                    txt_embedding = txt_embedding.cuda()
-
+                    txt_embedding=txt_embedding.cuda()
                 #######################################################
                 # (2) Generate fake images
                 ######################################################
                 noise.data.normal_(0, 1)
                 inputs = (txt_embedding, noise)
-                _, fake_imgs, mu, logvar = \
-                    nn.parallel.data_parallel(netG, inputs, self.gpus)
-
+                #_, fake_imgs, mu, logvar = \
+                #    nn.parallel.data_parallel(netG, inputs, self.gpus)
+                _,fake_imgs,mu,logvar=netG(inputs[0],inputs[1])
                 ############################
                 # (3) Update D network
                 ###########################
@@ -195,28 +197,38 @@ class GANTrainer(object):
 
                 count = count + 1
                 if i % 100 == 0:
-                    summary_D = summary.scalar('D_loss', errD.data[0])
-                    summary_D_r = summary.scalar('D_loss_real', errD_real)
-                    summary_D_w = summary.scalar('D_loss_wrong', errD_wrong)
-                    summary_D_f = summary.scalar('D_loss_fake', errD_fake)
-                    summary_G = summary.scalar('G_loss', errG.data[0])
-                    summary_KL = summary.scalar('KL_loss', kl_loss.data[0])
+                    # summary_D = summary.scalar('D_loss', errD.data[0])
+                    # summary_D_r = summary.scalar('D_loss_real', errD_real)
+                    # summary_D_w = summary.scalar('D_loss_wrong', errD_wrong)
+                    # summary_D_f = summary.scalar('D_loss_fake', errD_fake)
+                    # summary_G = summary.scalar('G_loss', errG.data[0])
+                    # summary_KL = summary.scalar('KL_loss', kl_loss.data[0])
 
-                    self.summary_writer.add_summary(summary_D, count)
-                    self.summary_writer.add_summary(summary_D_r, count)
-                    self.summary_writer.add_summary(summary_D_w, count)
-                    self.summary_writer.add_summary(summary_D_f, count)
-                    self.summary_writer.add_summary(summary_G, count)
-                    self.summary_writer.add_summary(summary_KL, count)
+                    # self.summary_writer.add_summary(summary_D, count)
+                    # self.summary_writer.add_summary(summary_D_r, count)
+                    # self.summary_writer.add_summary(summary_D_w, count)
+                    # self.summary_writer.add_summary(summary_D_f, count)
+                    # self.summary_writer.add_summary(summary_G, count)
+                    # self.summary_writer.add_summary(summary_KL, count)
 
                     # save the image result for each epoch
+                    #KRISHNA!!!!!!!!!!!!!!!!!!!!!
                     inputs = (txt_embedding, fixed_noise)
                     lr_fake, fake, _, _ = \
                         nn.parallel.data_parallel(netG, inputs, self.gpus)
                     save_img_results(real_img_cpu, fake, epoch, self.image_dir)
                     if lr_fake is not None:
                         save_img_results(None, lr_fake, epoch, self.image_dir)
+
+                    print('''[%d/%d][%d/%d] Loss_D: %.4f Loss_G: %.4f Loss_KL: %.4f
+                            Loss_real: %.4f Loss_wrong:%.4f Loss_fake %.4f
+                            Total Time: %.2fsec'''
+                  % (epoch, self.max_epoch, i, len(data_loader),
+                     errD.data[0], errG.data[0], kl_loss.data[0],
+                     errD_real, errD_wrong, errD_fake, (end_t - start_t)))
+            
             end_t = time.time()
+                
             print('''[%d/%d][%d/%d] Loss_D: %.4f Loss_G: %.4f Loss_KL: %.4f
                      Loss_real: %.4f Loss_wrong:%.4f Loss_fake %.4f
                      Total Time: %.2fsec
@@ -229,7 +241,7 @@ class GANTrainer(object):
         #
         save_model(netG, netD, self.max_epoch, self.model_dir)
         #
-        self.summary_writer.close()
+        # self.summary_writer.close()
 
     def sample(self, datapath, stage=1):
         if stage == 1:

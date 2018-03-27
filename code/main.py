@@ -16,7 +16,7 @@ import dateutil.tz
 dir_path = (os.path.abspath(os.path.join(os.path.realpath(__file__), './.')))
 sys.path.append(dir_path)
 
-from miscc.datasets import TextDataset
+from miscc.datasets import TextImageDataset
 from miscc.config import cfg, cfg_from_file
 from miscc.utils import mkdir_p
 from trainer import GANTrainer
@@ -29,7 +29,7 @@ def parse_args():
                         default='birds_stage1.yml', type=str)
     parser.add_argument('--gpu',  dest='gpu_id', type=str, default='0')
     parser.add_argument('--data_dir', dest='data_dir', type=str, default='')
-    parser.add_argument('--manualSeed', type=int, help='manual seed')
+    parser.add_argument('--manualSeed', type=int, help='manual seed',dest='manualSeed')
     args = parser.parse_args()
     return args
 
@@ -53,16 +53,17 @@ if __name__ == "__main__":
     timestamp = now.strftime('%Y_%m_%d_%H_%M_%S')
     output_dir = '../output/%s_%s_%s' % \
                  (cfg.DATASET_NAME, cfg.CONFIG_NAME, timestamp)
-
+    #mkdir_p(output_dir)     
     num_gpu = len(cfg.GPU_ID.split(','))
     if cfg.TRAIN.FLAG:
         image_transform = transforms.Compose([
-            transforms.RandomCrop(cfg.IMSIZE),
+            transforms.ToPILImage(),
+            transforms.RandomCrop([cfg.IMSIZE,cfg.IMSIZE]),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-        dataset = TextDataset(cfg.DATA_DIR, 'train',
-                              imsize=cfg.IMSIZE,
+        dataset = TextImageDataset(data_dir=cfg.DATA_DIR,ann_file=cfg.ANN_FILE,
+                              imsize=cfg.IMSIZE,emb_model=cfg.EMB_MODEL,
                               transform=image_transform)
         assert dataset
         dataloader = torch.utils.data.DataLoader(
