@@ -149,31 +149,33 @@ def get_features(imgs):
     att_batch = np.ndarray((batch_size, 14, 14, 2048), dtype = 'float32')
     wrapped = False
     infos = []
-
+    imgs_np=imgs.data.cpu().numpy()
     for i in range(batch_size):
-        
+        img=imgs_np[i]
+        img=(img+np.ones_like(img))/2
         if len(img.shape) == 2:
             img = img[:,:,np.newaxis]
             img = np.concatenate((img, img, img), axis=2)
 ################################################
-            img = img.astype('float32')/255.0 #Check if 255 is required or not. Img from StackGAN might be from 0 to 1
-            img = torch.from_numpy(img.transpose([2,0,1])).cuda() #
-            img = Variable(preprocess(img), volatile=True)
-            tmp_fc, tmp_att = self.my_resnet(img)
+            # img = img.astype('float32')/255.0 #Check if 255 is required or not. Img from StackGAN might be from 0 to 1
+            # img = torch.from_numpy(img.transpose([2,0,1])).cuda() #
+        
+        img = Variable(preprocess(img), volatile=True)
+        tmp_fc, tmp_att = self.my_resnet(img)
 
-            fc_batch[i] = tmp_fc.data.cpu().float().numpy()
-            att_batch[i] = tmp_att.data.cpu().float().numpy()
+        fc_batch[i] = tmp_fc.data.cpu().float().numpy()
+        att_batch[i] = tmp_att.data.cpu().float().numpy()
 
-            info_struct = {}
-            info_struct['id'] = self.ids[ri]
-            info_struct['file_path'] = self.files[ri]
-            infos.append(info_struct)
+        info_struct = {}
+        # info_struct['id'] = self.ids[ri]
+        # info_struct['file_path'] = self.files[ri]
+        infos.append(info_struct)
 
         data = {}
         data['fc_feats'] = fc_batch
         data['att_feats'] = att_batch
         # data['bounds'] = {'it_pos_now': self.iterator, 'it_max': self.N, 'wrapped': wrapped}
-        data['infos'] = infos #^Change this             ^And this
+        # data['infos'] = infos #^Change this             ^And this
 ###################################################
         return data
 
@@ -199,18 +201,18 @@ def captioning_model(imgs,model):
     loss_evals = 1e-8
     predictions = []
     seq_per_img = 1
-    while True:
+    # while True:
         # forward the model to also get generated samples for each image
         # Only leave one feature for each image, in case duplicate sample
-        tmp = [data['fc_feats'][np.arange(batch_size) * seq_per_img], 
-            data['att_feats'][np.arange(batch_size) * seq_per_img]]
-        tmp = [Variable(torch.from_numpy(_), volatile=True).cuda() for _ in tmp]
-        fc_feats, att_feats = tmp
-        # forward the model to also get generated samples for each image
-        seq, _ = model.sample(fc_feats, att_feats, eval_kwargs) #Dont need to worry about this
-        
-        #set_trace()
-        sents = utils.decode_sequence(loader.get_vocab(), seq)
+    tmp = [data['fc_feats'][np.arange(batch_size) * seq_per_img], 
+        data['att_feats'][np.arange(batch_size) * seq_per_img]]
+    tmp = [Variable(torch.from_numpy(_), volatile=True).cuda() for _ in tmp]
+    fc_feats, att_feats = tmp
+    # forward the model to also get generated samples for each image
+    seq, _ = model.sample(fc_feats, att_feats, eval_kwargs) #Dont need to worry about this
+    
+    #set_trace()
+    sents = utils.decode_sequence(loader.get_vocab(), seq)
 
         # for k, sent in enumerate(sents):
         #     #Creates a dictionary og images and captions #Can Directly omit this below shit
@@ -250,4 +252,4 @@ def captioning_model(imgs,model):
     # Switch back to training mode
     # model.train()
     # return loss_sum/loss_evals, predictions, lang_stats
-
+    return sents
