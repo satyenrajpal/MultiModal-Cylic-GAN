@@ -19,13 +19,13 @@ from miscc.utils import weights_init
 from miscc.utils import save_img_results, save_model
 from miscc.utils import KL_loss
 from miscc.utils import compute_discriminator_loss, compute_generator_loss
-
 from tensorboard import summary
 #from tensorboard import FileWriter
 
+# import eval_utils as eval_utils
 
 class GANTrainer(object):
-    def __init__(self, output_dir):#
+    def __init__(self, output_dir,cap_model,vocab,eval_utils,my_resnet,eval_kwargs={}):#
         if cfg.TRAIN.FLAG:
             self.model_dir = os.path.join(output_dir, 'Model')
             self.image_dir = os.path.join(output_dir, 'Image')
@@ -34,7 +34,7 @@ class GANTrainer(object):
             mkdir_p(self.image_dir)
             mkdir_p(self.log_dir)
             #self.summary_writer = FileWriter(self.log_dir)
-
+        self.cap_model=cap_model
         self.max_epoch = cfg.TRAIN.MAX_EPOCH
         self.snapshot_interval = cfg.TRAIN.SNAPSHOT_INTERVAL
         self.gpus=None
@@ -46,6 +46,11 @@ class GANTrainer(object):
         self.batch_size = cfg.TRAIN.BATCH_SIZE * self.num_gpus
         torch.cuda.set_device(self.gpus[0])
         cudnn.benchmark = True
+        self.vocab=vocab
+        self.eval_kwargs=eval_kwargs
+        self.eval_utils=eval_utils
+        self.my_resnet=my_resnet
+
 
     # ############# For training stageI GAN ############# No Need to do anything
     def load_network_stageI(self):
@@ -155,8 +160,9 @@ class GANTrainer(object):
                 discriminator_lr *= 0.5
                 for param_group in optimizerD.param_groups:
                     param_group['lr'] = discriminator_lr
-
+            print("Hello")
             for i, data in enumerate(data_loader, 0):
+            	print("Starting Loop")
                 ######################################################
                 # (1) Prepare training data
                 ######################################################
@@ -171,9 +177,16 @@ class GANTrainer(object):
                 ######################################################
                 noise.data.normal_(0, 1)
                 inputs = (txt_embedding, noise)
+                print("Before parallel")
                 _, fake_imgs, mu, logvar = \
                     nn.parallel.data_parallel(netG, inputs, self.gpus)
+                print("After parallel")
                 #_,fake_imgs,mu,logvar=netG(inputs[0],inputs[1])
+                #######################################################
+                # (2.1) Generate captions for fake images
+                ######################################################
+                sents=self.eval_utils.captioning_model(fake_imgs,self.cap_model,self.vocab,self.my_resnet,self.eval_kwargs)
+                print("completed sentence eval")
                 ############################
                 # (3) Update D network
                 ###########################

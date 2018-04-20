@@ -5,9 +5,9 @@ EMBEDDING_TYPE: 'cnn-rnn'
 GPU_ID: '0,1'
 CUDA: True
 Z_DIM: 100
-DATA_DIR: '/pylon5/ir5fp2p/satyenr/val2014'
-ANN_FILE: '/pylon5/ir5fp2p/satyenr/annotations/captions_val2014.json'
-EMB_MODEL: '/pylon5/ir5fp2p/satyenr/GloVe/glove.6B.50d.txt'
+DATA_DIR: '/home/ubuntu/BaLSaKGAN-/data_StckGAN/val2014'
+ANN_FILE: '/home/ubuntu/BaLSaKGAN-/data_StckGAN/annotations/captions_val2014.json'
+EMB_MODEL: '//home/ubuntu/BaLSaKGAN-/data_StckGAN/glove/glove.6B.50d.txt'
 IMSIZE: 64
 WORKERS: 4
 STAGE: 1

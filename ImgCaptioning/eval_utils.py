@@ -15,7 +15,11 @@ import time
 import os
 import sys
 import misc.utils as utils
-
+from torchvision import transforms as trn
+preprocess = trn.Compose([
+        #trn.ToTensor(),
+        trn.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+])
 def language_eval(dataset, preds, model_id, split):
     import sys
     if 'coco' in dataset:
@@ -143,44 +147,36 @@ def eval_split(model, crit, loader, eval_kwargs={}):
     model.train()
     return loss_sum/loss_evals, predictions, lang_stats
 
-def get_features(imgs):
+def get_features(imgs,my_resnet):
     batch_size=imgs.size()[0] #Not so sure about this
     fc_batch = np.ndarray((batch_size, 2048), dtype = 'float32')
     att_batch = np.ndarray((batch_size, 14, 14, 2048), dtype = 'float32')
-    wrapped = False
-    infos = []
-    imgs_np=imgs.data.cpu().numpy()
+    # infos = []
+    imgs_tn=imgs.data
+    imgs_tn = torch.add(imgs_tn, 1)/2
     for i in range(batch_size):
-        img=imgs_np[i]
-        img=(img+np.ones_like(img))/2
-        if len(img.shape) == 2:
-            img = img[:,:,np.newaxis]
-            img = np.concatenate((img, img, img), axis=2)
+        # print("Size of image tensir full: ", imgs_tn.size())
+        img = imgs_tn[i]
+        # print("Size of the each tensor: ", img.size())
 ################################################
             # img = img.astype('float32')/255.0 #Check if 255 is required or not. Img from StackGAN might be from 0 to 1
             # img = torch.from_numpy(img.transpose([2,0,1])).cuda() #
         
+        #img = Variable(preprocess(img), volatile=True)
         img = Variable(preprocess(img), volatile=True)
-        tmp_fc, tmp_att = self.my_resnet(img)
+        tmp_fc, tmp_att = my_resnet(img)
 
         fc_batch[i] = tmp_fc.data.cpu().float().numpy()
         att_batch[i] = tmp_att.data.cpu().float().numpy()
 
-        info_struct = {}
-        # info_struct['id'] = self.ids[ri]
-        # info_struct['file_path'] = self.files[ri]
-        infos.append(info_struct)
-
         data = {}
         data['fc_feats'] = fc_batch
         data['att_feats'] = att_batch
-        # data['bounds'] = {'it_pos_now': self.iterator, 'it_max': self.N, 'wrapped': wrapped}
-        # data['infos'] = infos #^Change this             ^And this
 ###################################################
         return data
 
 
-def captioning_model(imgs,model):
+def captioning_model(imgs,model,vocab,my_resnet,eval_kwargs={}):
     #Load the model first
     verbose = eval_kwargs.get('verbose', True)#
     num_images = eval_kwargs.get('num_images', eval_kwargs.get('val_images_use', -1))#
@@ -189,12 +185,18 @@ def captioning_model(imgs,model):
     dataset = eval_kwargs.get('dataset', 'coco')#
     beam_size = eval_kwargs.get('beam_size', 1)
     batch_size=imgs.size()[0]
+
+    print("Incoming batch size: ", batch_size)
+    print("coming into captioning model")
+
     # Make sure in the evaluation mode
     model.eval()
 
     # loader.reset_iterator(split)#
-    data=get_features(imgs)
+    data=get_features(imgs,my_resnet)
     
+    # print("got the features in cm")
+
     n = 0
     loss = 0
     loss_sum = 0
@@ -212,8 +214,10 @@ def captioning_model(imgs,model):
     seq, _ = model.sample(fc_feats, att_feats, eval_kwargs) #Dont need to worry about this
     
     #set_trace()
-    sents = utils.decode_sequence(loader.get_vocab(), seq)
-
+    print("coming before decode squence")
+    sents = utils.decode_sequence(vocab, seq)
+    # for sent in sents:
+    #     print(sent)
         # for k, sent in enumerate(sents):
         #     #Creates a dictionary og images and captions #Can Directly omit this below shit
         #     entry = {'image_id': data['infos'][k]['id'], 'caption': sent}
