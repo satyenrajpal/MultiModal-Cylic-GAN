@@ -32,10 +32,12 @@ def parse_args():
     parser.add_argument('--model', type=str, default='',
                 help='path to model to evaluate')
     parser.add_argument('--cnn_model', type=str,  default='resnet101',
-                help='resnet101, resnet152')
+                help='resnet101')
+    parser.add_argument('--cnn_model_dir', type=str,  default='',
+                help='path to resnet file')    
     parser.add_argument('--infos_path', type=str, default='',
                 help='path to infos to evaluate')
-    parser.add_argument('--cap_dir', type=str,  default=os.getcwd(),
+    parser.add_argument('--cap_dir', type=str,  default='ImgCaptioning',
                 help='Path to ImageCaptioning dir')
     parser.add_argument('--manualSeed', type=int, help='manual seed',dest='manualSeed')
     args = parser.parse_args()
