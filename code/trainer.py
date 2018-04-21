@@ -162,7 +162,7 @@ class GANTrainer(object):
                     param_group['lr'] = discriminator_lr
             print("Hello")
             for i, data in enumerate(data_loader, 0):
-            	print("Starting Loop")
+            	# print("Starting Loop")
                 ######################################################
                 # (1) Prepare training data
                 ######################################################
@@ -177,16 +177,16 @@ class GANTrainer(object):
                 ######################################################
                 noise.data.normal_(0, 1)
                 inputs = (txt_embedding, noise)
-                print("Before parallel")
+                # print("Before parallel")
                 _, fake_imgs, mu, logvar = \
                     nn.parallel.data_parallel(netG, inputs, self.gpus)
-                print("After parallel")
+                # print("After parallel")
                 #_,fake_imgs,mu,logvar=netG(inputs[0],inputs[1])
                 #######################################################
                 # (2.1) Generate captions for fake images
                 ######################################################
                 sents=self.eval_utils.captioning_model(fake_imgs,self.cap_model,self.vocab,self.my_resnet,self.eval_kwargs)
-                print("completed sentence eval")
+                # print("completed sentence eval")
                 ############################
                 # (3) Update D network
                 ###########################
