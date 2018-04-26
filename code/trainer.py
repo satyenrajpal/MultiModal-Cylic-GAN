@@ -185,8 +185,8 @@ class GANTrainer(object):
                 #######################################################
                 # (2.1) Generate captions for fake images
                 ######################################################
-                sents=self.eval_utils.captioning_model(fake_imgs,self.cap_model,self.vocab,self.my_resnet,self.eval_kwargs)
-                # print("completed sentence eval")
+                sents,h_sent=self.eval_utils.captioning_model(fake_imgs,self.cap_model,self.vocab,self.my_resnet,self.eval_kwargs)
+                print("NUmber of sentences: ", len(sents))
                 ############################
                 # (3) Update D network
                 ###########################

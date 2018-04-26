@@ -27,6 +27,8 @@ parser.add_argument('--cnn_model', type=str,  default='resnet101',
                 help='resnet101, resnet152')
 parser.add_argument('--infos_path', type=str, default='',
                 help='path to infos to evaluate')
+parser.add_argument('--cnn_model_dir', type=str, default='',
+                help='path to resnet models')
 # Basic options
 parser.add_argument('--batch_size', type=int, default=0,
                 help='if > 0 then overrule, otherwise load from checkpoint.')
@@ -111,11 +113,11 @@ else:
   loader = DataLoaderRaw({'folder_path': opt.image_folder, 
                             'coco_json': opt.coco_json,
                             'batch_size': opt.batch_size,
-                            'cnn_model': opt.cnn_model})
+                            'cnn_model': opt.cnn_model,
+                            'cnn_model_dir':opt.cnn_model_dir})
 # When eval using provided pretrained model, the vocab may be different from what you have in your cocotalk.json
 # So make sure to use the vocab in infos file.
 loader.ix_to_word = infos['vocab']
-
 
 # Set sample options
 loss, split_predictions, lang_stats = eval_utils.eval_split(model, crit, loader, 

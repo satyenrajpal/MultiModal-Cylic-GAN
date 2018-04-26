@@ -39,7 +39,7 @@ class AttModel(CaptionModel):
         self.att_hid_size = opt.att_hid_size
 
         self.ss_prob = 0.0 # Schedule sampling probability
-
+        print("RNN Size: ", opt.rnn_size)
         self.embed = nn.Sequential(nn.Embedding(self.vocab_size + 1, self.input_encoding_size),
                                 nn.ReLU(),
                                 nn.Dropout(self.drop_prob_lm))
@@ -94,17 +94,17 @@ class AttModel(CaptionModel):
 
             xt = self.embed(it)
 
-            output, state = self.core(xt, fc_feats, att_feats, p_att_feats, state)
+            output, state, h_lang = self.core(xt, fc_feats, att_feats, p_att_feats, state)
             output = F.log_softmax(self.logit(output))
             outputs.append(output)
 
-        return torch.cat([_.unsqueeze(1) for _ in outputs], 1)
+        return torch.cat([_.unsqueeze(1) for _ in outputs], 1),h_lang
 
     def get_logprobs_state(self, it, tmp_fc_feats, tmp_att_feats, tmp_p_att_feats, state):
         # 'it' is Variable contraining a word index
         xt = self.embed(it)
 
-        output, state = self.core(xt, tmp_fc_feats, tmp_att_feats, tmp_p_att_feats, state)
+        output, state, _ = self.core(xt, tmp_fc_feats, tmp_att_feats, tmp_p_att_feats, state)
         logprobs = F.log_softmax(self.logit(output))
 
         return logprobs, state
@@ -126,7 +126,7 @@ class AttModel(CaptionModel):
         seq = torch.LongTensor(self.seq_length, batch_size).zero_()
         seqLogprobs = torch.FloatTensor(self.seq_length, batch_size)
         # lets process every image independently for now, for simplicity
-
+        print("In Sample Beam")
         self.done_beams = [[] for _ in range(batch_size)]
         for k in range(batch_size):
             state = self.init_hidden(beam_size)
@@ -139,14 +139,14 @@ class AttModel(CaptionModel):
                     it = fc_feats.data.new(beam_size).long().zero_()
                     xt = self.embed(Variable(it, requires_grad=False))
 
-                output, state = self.core(xt, tmp_fc_feats, tmp_att_feats, tmp_p_att_feats, state)
+                output, state,h_lang = self.core(xt, tmp_fc_feats, tmp_att_feats, tmp_p_att_feats, state)
                 logprobs = F.log_softmax(self.logit(output))
 
             self.done_beams[k] = self.beam_search(state, logprobs, tmp_fc_feats, tmp_att_feats, tmp_p_att_feats, opt=opt)
             seq[:, k] = self.done_beams[k][0]['seq'] # the first beam has highest cumulative score
             seqLogprobs[:, k] = self.done_beams[k][0]['logps']
         # return the samples and their log likelihoods
-        return seq.transpose(0, 1), seqLogprobs.transpose(0, 1)
+        return seq.transpose(0, 1), seqLogprobs.transpose(0, 1),h_lang
 
     def sample(self, fc_feats, att_feats, opt={}):
         sample_max = opt.get('sample_max', 1)
@@ -154,7 +154,7 @@ class AttModel(CaptionModel):
         temperature = opt.get('temperature', 1.0)
         if beam_size > 1:
             return self.sample_beam(fc_feats, att_feats, opt)
-
+        print("In Sample")
         batch_size = fc_feats.size(0)
         state = self.init_hidden(batch_size)
 
@@ -168,7 +168,7 @@ class AttModel(CaptionModel):
         p_att_feats = p_att_feats.view(*(att_feats.size()[:-1] + (self.att_hid_size,)))
 
         seq = []
-        seqLogprobs = []
+        # seqLogprobs = []
         for t in range(self.seq_length + 1):
             if t == 0: # input <bos>
                 it = fc_feats.data.new(batch_size).long().zero_()
@@ -198,12 +198,12 @@ class AttModel(CaptionModel):
                 it = it * unfinished.type_as(it)
                 seq.append(it) #seq[t] the input of t+2 time step
 
-                seqLogprobs.append(sampleLogprobs.view(-1))
+                # seqLogprobs.append(sampleLogprobs.view(-1))
 
-            output, state = self.core(xt, fc_feats, att_feats, p_att_feats, state)
+            output, state,h_lang = self.core(xt, fc_feats, att_feats, p_att_feats, state)
             logprobs = F.log_softmax(self.logit(output))
 
-        return torch.cat([_.unsqueeze(1) for _ in seq], 1), torch.cat([_.unsqueeze(1) for _ in seqLogprobs], 1)
+        return torch.cat([_.unsqueeze(1) for _ in seq], 1), h_lang
 
 class AdaAtt_lstm(nn.Module):
     def __init__(self, opt, use_maxout=True):
@@ -378,18 +378,20 @@ class TopDownCore(nn.Module):
         att_lstm_input = torch.cat([prev_h, fc_feats, xt], 1)
 
         h_att, c_att = self.att_lstm(att_lstm_input, (state[0][0], state[1][0]))
-
+        # print("fc_feat_size: ",fc_feats.size())
         att = self.attention(h_att, att_feats, p_att_feats)
 
         lang_lstm_input = torch.cat([att, h_att], 1)
+        # print("Lang_LSTM_size:",lang_lstm_input.size())
         # lang_lstm_input = torch.cat([att, F.dropout(h_att, self.drop_prob_lm, self.training)], 1) ?????
 
         h_lang, c_lang = self.lang_lstm(lang_lstm_input, (state[0][1], state[1][1]))
+        # print("H_lang_insideFn:",h_lang.size())
 
         output = F.dropout(h_lang, self.drop_prob_lm, self.training)
         state = (torch.stack([h_att, h_lang]), torch.stack([c_att, c_lang]))
 
-        return output, state
+        return output, state, h_lang
 
 class Attention(nn.Module):
     def __init__(self, opt):
@@ -418,7 +420,6 @@ class Attention(nn.Module):
         att_res = torch.bmm(weight.unsqueeze(1), att_feats_).squeeze(1) # batch * att_feat_size
 
         return att_res
-
 
 class Att2in2Core(nn.Module):
     def __init__(self, opt):

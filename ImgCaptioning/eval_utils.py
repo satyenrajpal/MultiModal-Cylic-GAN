@@ -103,8 +103,8 @@ def eval_split(model, crit, loader, eval_kwargs={}):
         tmp = [Variable(torch.from_numpy(_), volatile=True).cuda() for _ in tmp]
         fc_feats, att_feats = tmp
         # forward the model to also get generated samples for each image
-        seq, _ = model.sample(fc_feats, att_feats, eval_kwargs) #Dont need to worry about this
-        
+        seq, _, h_sent = model.sample(fc_feats, att_feats, eval_kwargs) #Dont need to worry about this
+        print("hidden State shape:",h_sent.size())
         #set_trace()
         sents = utils.decode_sequence(loader.get_vocab(), seq)#
 
@@ -211,10 +211,10 @@ def captioning_model(imgs,model,vocab,my_resnet,eval_kwargs={}):
     tmp = [Variable(torch.from_numpy(_), volatile=True).cuda() for _ in tmp]
     fc_feats, att_feats = tmp
     # forward the model to also get generated samples for each image
-    seq, _ = model.sample(fc_feats, att_feats, eval_kwargs) #Dont need to worry about this
-    
+    seq, _,h_sent = model.sample(fc_feats, att_feats, eval_kwargs) #Dont need to worry about this
+    print("hidden State shape:",h_sent.size())
     #set_trace()
-    print("coming before decode squence")
+    # print("coming before decode squence")
     sents = utils.decode_sequence(vocab, seq)
     # for sent in sents:
     #     print(sent)
@@ -256,4 +256,4 @@ def captioning_model(imgs,model,vocab,my_resnet,eval_kwargs={}):
     # Switch back to training mode
     # model.train()
     # return loss_sum/loss_evals, predictions, lang_stats
-    return sents
+    return sents,h_sent.data.numpy()
