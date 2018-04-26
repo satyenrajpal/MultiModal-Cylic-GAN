@@ -93,14 +93,14 @@ def weights_init(m):
 
 
 #############################
-def save_img_results(data_img, fake, epoch, image_dir):
+def save_img_results(data_img, fake, epoch, image_dir,captions,word):
     num = cfg.VIS_COUNT
     fake = fake[0:num]
     # data_img is changed to [0,1]
     if data_img is not None:
         data_img = data_img[0:num]
         vutils.save_image(
-            data_img, '%s/real_samples.png' % image_dir,
+            data_img, '%s/real_samples_epoch_%03d.png' % (image_dir,epoch),
             normalize=True)
         # fake.data is still [-1, 1]
         vutils.save_image(
@@ -108,8 +108,13 @@ def save_img_results(data_img, fake, epoch, image_dir):
             (image_dir, epoch), normalize=True)
     else:
         vutils.save_image(
-            fake.data, '%s/lr_fake_samples_epoch_%03d.png' %
+            fake.data, '%s/lr_fake_schangesamples_epoch_%03d.png' %
             (image_dir, epoch), normalize=True)
+    with open('%s/captions_out.txt'% image_dir,'a+') as file_:
+        file_.write(str(epoch)+'\n')
+        file_.write(str(word)+'\n')
+        [file_.write(str(x).lower().replace(".","")+'\n') for x in captions]
+        file_.write('\n')
 
 
 def save_model(netG, netD, epoch, model_dir):

@@ -124,10 +124,11 @@ class TextImageDataset(data.Dataset):
         #     print('embeddings: ', embeddings.shape)
         #Pick one sentence at random and pass an embedding of that in format 
         # (number_of_words x embedding_dim) format
-        sentence=captions[np.random.randint(0,len(captions)-1)].replace(".","").lower().split()
+        snt_idx=np.random.randint(0,len(captions)-1)
+        sentence=captions[snt_idx].replace(".","").lower().split()
         # print(sentence)
         embeddings=[self.glove.get(x) for x in sentence]
-        return np.array(embeddings)
+        return np.array(embeddings),sentence
 
     # def load_class_id(self, data_dir, total_num):
     #     if os.path.isfile(data_dir + '/class_info.pickle'):
@@ -159,18 +160,20 @@ class TextImageDataset(data.Dataset):
         img=np.array(img)
         if self.transform is not None:
             img = self.transform(img)    
-        embeddings = self.get_embedding(captions)
+        embeddings,sentence = self.get_embedding(captions)
         # img_name = '%s/images/%s.jpg' % (data_dir, key)
         # img = self.get_img(img_name, bbox)
         while(True):
         	embedding_ix = random.randint(0, len(embeddings)-1)
+        	
         	embedding = embeddings[embedding_ix]
         	if(embedding is not None):
         		break
         # print(embedding.shape)
+        word_=sentence[embedding_ix]
         if self.target_transform is not None:
             embedding = self.target_transform(embedding)
-        return img, embedding
+        return img, embedding,captions,word_
 
     def __len__(self):
         return len(self.cap)
