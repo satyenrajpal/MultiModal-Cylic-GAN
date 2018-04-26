@@ -100,13 +100,13 @@ class TextImageDataset(data.Dataset):
         """
         creates a dictionary mapping words to vectors from a file in glove format.
         """
-        f = open(emb_model, encoding="utf8")
-        glove = {}
-        for line in f.readlines():
-            values = line.split()
-            word = values[0]
-            vector = np.array(values[1:], dtype='float32')
-            glove[word] = vector
+        with open(emb_model) as f:
+            glove = {}
+            for line in f.readlines():
+                values = line.split()
+                word = values[0]
+                vector = np.array(values[1:], dtype='float32')
+                glove[word] = vector
         return glove
 
     def get_embedding(self, captions):
