@@ -2,11 +2,11 @@ CONFIG_NAME: 'stageI'
 
 DATASET_NAME: 'coco'
 EMBEDDING_TYPE: 'cnn-rnn'
-GPU_ID: '0,1'
+GPU_ID: '0'
 CUDA: True
-Z_DIM: 100
-DATA_DIR: '/home/ubuntu/BaLSaKGAN-/data_StckGAN/val2014'
-ANN_FILE: '/home/ubuntu/BaLSaKGAN-/data_StckGAN/annotations/captions_val2014.json'
+Z_DIM: 512
+DATA_DIR: '/home/ubuntu/val2014'
+ANN_FILE: '/home/ubuntu/coco/annotations/captions_val2014.json'
 EMB_MODEL: '//home/ubuntu/BaLSaKGAN-/data_StckGAN/glove/glove.6B.50d.txt'
 IMSIZE: 64
 WORKERS: 4
@@ -23,9 +23,9 @@ TRAIN:
       KL: 2.0
 
 GAN:
-    CONDITION_DIM: 128
+    CONDITION_DIM: 512
     DF_DIM: 96
     GF_DIM: 192
 
 TEXT:
-    DIMENSION: 50
+    DIMENSION: 512

@@ -93,8 +93,10 @@ def weights_init(m):
 
 
 #############################
-def save_img_results(data_img, fake, epoch, image_dir,captions,word):
-    num = cfg.VIS_COUNT
+def save_img_results(data_img, fake, epoch, image_dir,captions):
+    # word='lol'
+    num = 10
+
     fake = fake[0:num]
     # data_img is changed to [0,1]
     if data_img is not None:
@@ -112,7 +114,7 @@ def save_img_results(data_img, fake, epoch, image_dir,captions,word):
             (image_dir, epoch), normalize=True)
     with open('%s/captions_out.txt'% image_dir,'a+') as file_:
         file_.write(str(epoch)+'\n')
-        file_.write(str(word)+'\n')
+        # file_.write(str(word)+'\n')
         [file_.write(str(x).lower().replace(".","")+'\n') for x in captions]
         file_.write('\n')
 

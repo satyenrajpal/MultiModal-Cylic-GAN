@@ -186,8 +186,8 @@ def captioning_model(imgs,model,vocab,my_resnet,eval_kwargs={}):
     beam_size = eval_kwargs.get('beam_size', 1)
     batch_size=imgs.size()[0]
 
-    print("Incoming batch size: ", batch_size)
-    print("coming into captioning model")
+    # print("Incoming batch size: ", batch_size)
+    # print("coming into captioning model")
 
     # Make sure in the evaluation mode
     model.eval()
@@ -211,10 +211,8 @@ def captioning_model(imgs,model,vocab,my_resnet,eval_kwargs={}):
     tmp = [Variable(torch.from_numpy(_), volatile=True).cuda() for _ in tmp]
     fc_feats, att_feats = tmp
     # forward the model to also get generated samples for each image
-    seq, _,h_sent = model.sample(fc_feats, att_feats, eval_kwargs) #Dont need to worry about this
-    print("hidden State shape:",h_sent.size())
-    #set_trace()
-    # print("coming before decode squence")
+    seq,h_sent = model.sample(fc_feats, att_feats, eval_kwargs) #Dont need to worry about this
+    # print("hidden State shape:",h_sent.size())
     sents = utils.decode_sequence(vocab, seq)
     # for sent in sents:
     #     print(sent)
@@ -256,4 +254,4 @@ def captioning_model(imgs,model,vocab,my_resnet,eval_kwargs={}):
     # Switch back to training mode
     # model.train()
     # return loss_sum/loss_evals, predictions, lang_stats
-    return sents,h_sent.data.numpy()
+    return sents,h_sent.cpu().data.numpy()
