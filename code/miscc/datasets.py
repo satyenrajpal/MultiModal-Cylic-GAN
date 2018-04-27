@@ -13,19 +13,19 @@ import pickle
 import random
 import numpy as np
 import torch
-
+import sys
 from miscc.config import cfg
 import torchvision.datasets as dset
 import torchvision.transforms as transforms
 
 class TextImageDataset(data.Dataset):
-    def __init__(self, data_dir, ann_file, embedding_type='cnn-rnn',
+    def __init__(self, data_dir, ann_file, vocab_file=None, embedding_type='cnn-rnn',
                  emb_model=None,imsize=64, transform=None, target_transform=None):
 
         self.transform = transform
         self.target_transform = target_transform
         self.imsize = imsize
-        self.glove=self.load_embedding(emb_model)
+        # self.glove=self.load_embedding(emb_model)
         # if data_dir.find('birds') != -1:
         #     self.bbox = self.load_bbox()
         # else:
@@ -33,7 +33,15 @@ class TextImageDataset(data.Dataset):
         # split_dir = os.path.join(data_dir, split)
         self.cap = dset.CocoCaptions(root = data_dir,
                 annFile = ann_file)
+        self.vocab_file=vocab_file
+
+        self.word_to_indx_dict = dict (zip(vocab_file.values(),vocab_file.keys()))
+
         
+        #print(len(caps_ind))       
+        #caps_ind = [word_to_indx_dict[word] for word in caption.replace(".","").replace(",","")lower().split()]
+
+
         # self.filenames = self.load_filenames(split_dir)
         # self.embeddings = self.load_embedding(split_dir, embedding_type)
         # self.class_id = self.load_class_id(split_dir, len(self.filenames))
@@ -96,39 +104,39 @@ class TextImageDataset(data.Dataset):
     #         caption_dict[key] = captions
     #     return caption_dict
 
-    def load_embedding(self,emb_model):
-        """
-        creates a dictionary mapping words to vectors from a file in glove format.
-        """
-        with open(emb_model) as f:
-            glove = {}
-            for line in f.readlines():
-                values = line.split()
-                word = values[0]
-                vector = np.array(values[1:], dtype='float32')
-                glove[word] = vector
-        return glove
+    # def load_embedding(self,emb_model):
+    #     """
+    #     creates a dictionary mapping words to vectors from a file in glove format.
+    #     """
+    #     with open(emb_model) as f:
+    #         glove = {}
+    #         for line in f.readlines():
+    #             values = line.split()
+    #             word = values[0]
+    #             vector = np.array(values[1:], dtype='float32')
+    #             glove[word] = vector
+    #     return glove
 
-    def get_embedding(self, captions):
-        # #if embedding_type == 'cnn-rnn':
-        #     embedding_filename = '/char-CNN-RNN-embeddings.pickle'
-        # elif embedding_type == 'cnn-gru':
-        #     embedding_filename = '/char-CNN-GRU-embeddings.pickle'
-        # elif embedding_type == 'skip-thought':
-        #     embedding_filename = '/skip-thought-embeddings.pickle'
+    # def get_embedding(self, captions):
+    #     # #if embedding_type == 'cnn-rnn':
+    #     #     embedding_filename = '/char-CNN-RNN-embeddings.pickle'
+    #     # elif embedding_type == 'cnn-gru':
+    #     #     embedding_filename = '/char-CNN-GRU-embeddings.pickle'
+    #     # elif embedding_type == 'skip-thought':
+    #     #     embedding_filename = '/skip-thought-embeddings.pickle'
 
-        # with open(data_dir + embedding_filename, 'rb') as f:
-        #     embeddings = pickle.load(f)
-        #     embeddings = np.array(embeddings)
-        #     # embedding_shape = [embeddings.shape[-1]]
-        #     print('embeddings: ', embeddings.shape)
-        #Pick one sentence at random and pass an embedding of that in format 
-        # (number_of_words x embedding_dim) format
-        snt_idx=np.random.randint(0,len(captions)-1)
-        sentence=captions[snt_idx].replace(".","").lower().split()
-        # print(sentence)
-        embeddings=[self.glove.get(x) for x in sentence]
-        return np.array(embeddings),sentence
+    #     # with open(data_dir + embedding_filename, 'rb') as f:
+    #     #     embeddings = pickle.load(f)
+    #     #     embeddings = np.array(embeddings)
+    #     #     # embedding_shape = [embeddings.shape[-1]]
+    #     #     print('embeddings: ', embeddings.shape)
+    #     #Pick one sentence at random and pass an embedding of that in format 
+    #     # (number_of_words x embedding_dim) format
+    #     snt_idx=np.random.randint(0,len(captions)-1)
+    #     sentence=captions[snt_idx].replace(".","").lower().split()
+    #     # print(sentence)
+    #     embeddings=[self.glove.get(x) for x in sentence]
+    #     return np.array(embeddings),sentence
 
     # def load_class_id(self, data_dir, total_num):
     #     if os.path.isfile(data_dir + '/class_info.pickle'):
@@ -145,6 +153,20 @@ class TextImageDataset(data.Dataset):
     #     print('Load filenames from: %s (%d)' % (filepath, len(filenames)))
     #     return filenames
 
+    def convert_to_index(self,captions):
+        captions_idx = []
+        for descr in captions:
+            words_curr = descr.replace(".","").replace(",","").lower().split()
+            caps_ind = []
+            for word in words_curr:
+                if word in self.word_to_indx_dict.keys():
+                    caps_ind.append(int(self.word_to_indx_dict[word]))
+                else:
+                    continue;
+            captions_idx.append(np.array(caps_ind))
+        return np.array(captions_idx)
+
+
     def __getitem__(self, index):
         # key = self.filenames[index]
         # cls_id = self.class_id[index]
@@ -156,24 +178,31 @@ class TextImageDataset(data.Dataset):
         # bbox = None
         # data_dir = self.data_dir
         img,captions=self.cap[index]
+        idx=np.random.randint(5,size=3)
+        new_captions=[]
+        for i in idx:
+            new_captions.append(captions[i])
+        captions=np.array(new_captions)
+        captions_idx=self.convert_to_index(captions)
 
         img=np.array(img)
         if self.transform is not None:
-            img = self.transform(img)    
-        embeddings,sentence = self.get_embedding(captions)
+            img = self.transform(img)
+        # print("Image Size: ", img.shape)    
+        # embeddings,sentence = self.get_embedding(captions)
         # img_name = '%s/images/%s.jpg' % (data_dir, key)
         # img = self.get_img(img_name, bbox)
-        while(True):
-        	embedding_ix = random.randint(0, len(embeddings)-1)
+        # while(True):
+        # 	embedding_ix = random.randint(0, len(embeddings)-1)
         	
-        	embedding = embeddings[embedding_ix]
-        	if(embedding is not None):
-        		break
-        # print(embedding.shape)
-        word_=sentence[embedding_ix]
-        if self.target_transform is not None:
-            embedding = self.target_transform(embedding)
-        return img, embedding,captions,word_
+        # 	embedding = embeddings[embedding_ix]
+        # 	if(embedding is not None):
+        # 		break
+        # # print(embedding.shape)
+        # word_=sentence[embedding_ix]
+        # if self.target_transform is not None:
+        #     embedding = self.target_transform(embedding)
+        return img, captions_idx[0],captions_idx[1],captions_idx[2],captions
 
     def __len__(self):
         return len(self.cap)

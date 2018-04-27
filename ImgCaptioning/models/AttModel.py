@@ -154,7 +154,7 @@ class AttModel(CaptionModel):
         temperature = opt.get('temperature', 1.0)
         if beam_size > 1:
             return self.sample_beam(fc_feats, att_feats, opt)
-        print("In Sample")
+        # print("In Sample")
         batch_size = fc_feats.size(0)
         state = self.init_hidden(batch_size)
 

@@ -9,7 +9,7 @@ from torch.autograd import Variable
 import torch.optim as optim
 import os
 import time
-
+import sys
 import numpy as np
 import torchfile
 
@@ -21,6 +21,7 @@ from miscc.utils import KL_loss
 from miscc.utils import compute_discriminator_loss, compute_generator_loss
 from tensorboard import summary
 #from tensorboard import FileWriter
+from ConcurrentThoughtsModel import *
 
 # import eval_utils as eval_utils
 
@@ -50,7 +51,24 @@ class GANTrainer(object):
         self.eval_kwargs=eval_kwargs
         self.eval_utils=eval_utils
         self.my_resnet=my_resnet
+        ##layers, hidden size, bidirectional, emb_dim
+        self.CTencoder= STEncoder(1, 512, True, 128)
 
+        ##hidden_size, embedding_dim, thought_size, vocab_size
+        self.CTdecoder = STDuoDecoderAttn(256, 128, 512, 9487)
+
+        ##encoder_model, decoder_model, embedding_dim, vocab_size
+        self.CTallmodel = UniSKIP_variant(self.CTencoder, self.CTdecoder, 128, 9487)
+
+        self.cosEmbLoss = nn.CosineEmbeddingLoss()
+        ## Loss Function
+        self.CTloss = nn.CrossEntropyLoss()
+        if(cfg.CUDA):
+            self.cosEmbLoss=self.cosEmbLoss.cuda()
+            self.CTloss = self.CTloss.cuda()
+            self.CTencoder = self.CTencoder.cuda()
+            self.CTdecoder = self.CTdecoder.cuda()
+            self.CTallmodel = self.CTallmodel.cuda()
 
     # ############# For training stageI GAN ############# No Need to do anything
     def load_network_stageI(self):
@@ -127,6 +145,7 @@ class GANTrainer(object):
         #######
         nz = cfg.Z_DIM
         batch_size = self.batch_size
+        flags = Variable(torch.cuda.FloatTensor([1.0]*batch_size))
         noise = Variable(torch.FloatTensor(batch_size, nz))
         fixed_noise = \
             Variable(torch.FloatTensor(batch_size, nz).normal_(0, 1),
@@ -136,6 +155,7 @@ class GANTrainer(object):
         if cfg.CUDA:
             noise, fixed_noise = noise.cuda(), fixed_noise.cuda()
             real_labels, fake_labels = real_labels.cuda(), fake_labels.cuda()
+            # flags.cuda()
 
         generator_lr = cfg.TRAIN.GENERATOR_LR
         discriminator_lr = cfg.TRAIN.DISCRIMINATOR_LR
@@ -150,6 +170,11 @@ class GANTrainer(object):
         optimizerG = optim.Adam(netG_para,
                                 lr=cfg.TRAIN.GENERATOR_LR,
                                 betas=(0.5, 0.999))
+        ####Optimizers for CT c                             ##########################TODO:PRINT PARAMETERS!!!!
+        optimizerCTallmodel=optim.Adam(self.CTallmodel.parameters(),
+                                lr=0.0001, weight_decay=0.00001,betas=(0.5, 0.999))
+        optimizerCTenc=optim.Adam(self.CTencoder.parameters(),
+                                lr=0.0001, weight_decay=0.00001,betas=(0.5, 0.999))
         count = 0
         for epoch in range(self.max_epoch):
             start_t = time.time()
@@ -160,33 +185,87 @@ class GANTrainer(object):
                 discriminator_lr *= 0.5
                 for param_group in optimizerD.param_groups:
                     param_group['lr'] = discriminator_lr
-            print("Hello")
-            for i, data in enumerate(data_loader, 0):
+            print("Started training")
+            optimizerCTallmodel.zero_grad()
+            epoch_loss=0
+            emb_loss=0
+            for i, data in enumerate(data_loader):
             	# print("Starting Loop")
                 ######################################################
                 # (1) Prepare training data
                 ######################################################
-                real_img_cpu, txt_embedding,captions,word_ = data 
+
+                real_img_cpu, sentences, paddedArrayPrev, maskArrayPrev, paddedArrayCurr, Currlenghts, paddedArrayNext, maskArrayNext = data
+                # self.CTallmodel.encoder.hidden=self.CTallmodel.encoder.hidden_init(paddedArrayCurr.size(1))
+                # print("Image Size: ", real_img_cpu.shape)
                 real_imgs = Variable(real_img_cpu)
-                txt_embedding = Variable(txt_embedding,requires_grad=False) 
+                # txt_embedding = Variable(txt_embedding,requires_grad=False)
+
                 if cfg.CUDA:
                     real_imgs = real_imgs.cuda()
-                    txt_embedding=txt_embedding.cuda()
+                    # txt_embedding=txt_embedding.cuda()
+                    paddedArrayCurr=Variable(paddedArrayCurr.type(torch.LongTensor).cuda())
+                    paddedArrayNext_input=Variable(paddedArrayNext[:-1, :].type(torch.LongTensor).cuda())
+                    paddedArrayPrev_input=Variable(paddedArrayPrev[:-1, :].type(torch.LongTensor).cuda())
+                #Optimizing over Concurrent model
+                sent_hidden, logits_prev, logits_next = self.CTallmodel(paddedArrayCurr, Currlenghts, paddedArrayPrev_input, paddedArrayNext_input)
+
+                logits_prev = logits_prev.contiguous().view(-1, logits_prev.size()[2])
+                logits_next = logits_next.contiguous().view(-1, logits_next.size()[2])
+                
+                Y_prev = paddedArrayPrev[1:,:]
+                Y_prev = Y_prev.contiguous().view(-1)
+
+                Y_next = paddedArrayNext[1:,:]
+                Y_next = Y_next.contiguous().view(-1)
+
+                maskArrayPrev = maskArrayPrev[1:,:]
+                maskArrayPrev = maskArrayPrev.contiguous().view(-1)
+
+                maskArrayNext = maskArrayNext[1:,:]
+                maskArrayNext = maskArrayNext.contiguous().view(-1)
+    
+                ind_prev = torch.nonzero(maskArrayPrev, out=None).squeeze()
+                ind_next = torch.nonzero(maskArrayNext, out=None).squeeze()
+                
+                valid_target_prev = torch.index_select(Y_prev, 0, ind_prev).type(torch.LongTensor)
+                valid_output_prev = torch.index_select(logits_prev, 0, Variable(ind_prev).cuda())
+
+                valid_target_next = torch.index_select(Y_next, 0, ind_next).type(torch.LongTensor)
+                valid_output_next = torch.index_select(logits_next, 0, Variable(ind_next).cuda())
+
+                loss_prev = self.CTloss(valid_output_prev, Variable(valid_target_prev).cuda())
+                loss_next = self.CTloss(valid_output_next, Variable(valid_target_next).cuda())
+                
+                optimizerCTallmodel.zero_grad()
+                # self.CTencoder.zero_grad()
+                # self.CTdecoder.zero_grad()
+                self.CTallmodel.zero_grad()
+                loss = loss_prev + loss_next
+                loss.backward(retain_graph=True)
+                epoch_loss += loss.data[0]
+                optimizerCTallmodel.step()
+                
                 #######################################################
                 # (2) Generate fake images
                 ######################################################
                 noise.data.normal_(0, 1)
-                inputs = (txt_embedding, noise)
+                inputs = (sent_hidden, noise)
+                
                 # print("Before parallel")
                 _, fake_imgs, mu, logvar = \
-                    nn.parallel.data_parallel(netG, inputs, self.gpus)
-                # print("After parallel")
-                #_,fake_imgs,mu,logvar=netG(inputs[0],inputs[1])
+                    nn.parallel.data_parallel(netG, inputs, self.gpus) #### TODO: Check Shapes!!!!->Checked
+                
+                # _,fake_imgs,mu,logvar=netG(inputs[0],inputs[1])
                 #######################################################
                 # (2.1) Generate captions for fake images
                 ######################################################
                 sents,h_sent=self.eval_utils.captioning_model(fake_imgs,self.cap_model,self.vocab,self.my_resnet,self.eval_kwargs)
-                print("NUmber of sentences: ", len(sents))
+                h_sent_var=Variable(torch.FloatTensor(h_sent)).cuda()
+                # print("NUmber of sentences: ", len(sents))
+                # print("Hidden Sentence size:", h_sent.shape)
+                # print("Hidden from CT model: ", sent_hidden.size())
+                #TODO:Print Loss values per epoch as well
                 ############################
                 # (3) Update D network
                 ###########################
@@ -197,16 +276,26 @@ class GANTrainer(object):
                                                mu, self.gpus)
                 errD.backward()
                 optimizerD.step()
+                # print("discriminator loss computed")
                 ############################
                 # (2) Update G network
                 ###########################
+                ##############calculate cosine similarity
+                loss_cos=self.cosEmbLoss(sent_hidden, h_sent_var,flags)
                 netG.zero_grad()
+                # self.CTallmodel.zero_grad()
+                optimizerCTallmodel.zero_grad()
+                optimizerCTenc.zero_grad()
                 errG = compute_generator_loss(netD, fake_imgs,
                                               real_labels, mu, self.gpus)
                 kl_loss = KL_loss(mu, logvar)
-                errG_total = errG + kl_loss * cfg.TRAIN.COEFF.KL
+                errG_total = errG + kl_loss * cfg.TRAIN.COEFF.KL+loss_cos
                 errG_total.backward()
                 optimizerG.step()
+                optimizerCTenc.step()
+                emb_loss += loss_cos.data[0]
+                
+                # print("generator updated")
 
                 count = count + 1
                 if i % 100 == 0:
@@ -223,14 +312,15 @@ class GANTrainer(object):
                     # self.summary_writer.add_summary(summary_D_f, count)
                     # self.summary_writer.add_summary(summary_G, count)
                     # self.summary_writer.add_summary(summary_KL, count)
-
+                    print("Loss CT Model: ", epoch_loss)
+                    print("Emb Loss: ", emb_loss)
                     # save the image result for each epoch
-                    inputs = (txt_embedding, fixed_noise)
+                    inputs = (sent_hidden, fixed_noise)
                     lr_fake, fake, _, _ = \
                         nn.parallel.data_parallel(netG, inputs, self.gpus)
-                    save_img_results(real_img_cpu, fake, epoch, self.image_dir,captions,word_)
+                    save_img_results(real_img_cpu, fake, epoch, self.image_dir,sentences)
                     if lr_fake is not None:
-                        save_img_results(None, lr_fake, epoch, self.image_dir,captions,word_)
+                        save_img_results(None, lr_fake, epoch, self.image_dir,sentences)
             
             end_t = time.time()
                 
@@ -291,6 +381,7 @@ class GANTrainer(object):
             ######################################################
             noise.data.normal_(0, 1)
             inputs = (txt_embedding, noise)
+            t
             _, fake_imgs, mu, logvar = \
                 nn.parallel.data_parallel(netG, inputs, self.gpus)
             for i in range(batch_size):
