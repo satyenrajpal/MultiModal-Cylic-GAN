@@ -39,7 +39,6 @@ class AttModel(CaptionModel):
         self.att_hid_size = opt.att_hid_size
 
         self.ss_prob = 0.0 # Schedule sampling probability
-        print("RNN Size: ", opt.rnn_size)
         self.embed = nn.Sequential(nn.Embedding(self.vocab_size + 1, self.input_encoding_size),
                                 nn.ReLU(),
                                 nn.Dropout(self.drop_prob_lm))
@@ -126,7 +125,6 @@ class AttModel(CaptionModel):
         seq = torch.LongTensor(self.seq_length, batch_size).zero_()
         seqLogprobs = torch.FloatTensor(self.seq_length, batch_size)
         # lets process every image independently for now, for simplicity
-        print("In Sample Beam")
         self.done_beams = [[] for _ in range(batch_size)]
         for k in range(batch_size):
             state = self.init_hidden(beam_size)

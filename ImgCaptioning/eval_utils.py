@@ -104,7 +104,6 @@ def eval_split(model, crit, loader, eval_kwargs={}):
         fc_feats, att_feats = tmp
         # forward the model to also get generated samples for each image
         seq, _, h_sent = model.sample(fc_feats, att_feats, eval_kwargs) #Dont need to worry about this
-        print("hidden State shape:",h_sent.size())
         #set_trace()
         sents = utils.decode_sequence(loader.get_vocab(), seq)#
 
@@ -169,11 +168,11 @@ def get_features(imgs,my_resnet):
         fc_batch[i] = tmp_fc.data.cpu().float().numpy()
         att_batch[i] = tmp_att.data.cpu().float().numpy()
 
-        data = {}
-        data['fc_feats'] = fc_batch
-        data['att_feats'] = att_batch
+    data = {}
+    data['fc_feats'] = fc_batch
+    data['att_feats'] = att_batch
 ###################################################
-        return data
+    return data
 
 
 def captioning_model(imgs,model,vocab,my_resnet,eval_kwargs={}):
@@ -185,10 +184,6 @@ def captioning_model(imgs,model,vocab,my_resnet,eval_kwargs={}):
     dataset = eval_kwargs.get('dataset', 'coco')#
     beam_size = eval_kwargs.get('beam_size', 1)
     batch_size=imgs.size()[0]
-
-    print("\n\n\n\n")
-    print("No of image I got: ", batch_size)
-    print("\n\n\n\n")
 
     # print("Incoming batch size: ", batch_size)
     # print("coming into captioning model")
@@ -215,9 +210,6 @@ def captioning_model(imgs,model,vocab,my_resnet,eval_kwargs={}):
     tmp = [Variable(torch.from_numpy(_), volatile=True).cuda() for _ in tmp]
     fc_feats, att_feats = tmp
     
-    print("fc_feats size: ", fc_feats.size()) 
-    print("att_feats size: ", att_feats.size())
-
     # forward the model to also get generated samples for each image
     seq,h_sent = model.sample(fc_feats, att_feats, eval_kwargs) #Dont need to worry about this
     # print("hidden State shape:",h_sent.size())

@@ -140,6 +140,11 @@ class GANTrainer(object):
 
     def train(self, data_loader, stage=1):
  	logger = Logger('./logs_CS_GAN')       
+        image_transform_train = transforms.Compose([
+            transforms.ToPILImage(),
+            transforms.Resize([64, 64]),
+            transforms.ToTensor()])
+
  
         if stage == 1:
             netG, netD = self.load_network_stageI()
@@ -199,7 +204,7 @@ class GANTrainer(object):
                 ######################################################
 
                 real_img_cpu, sentences, paddedArrayPrev, maskArrayPrev, paddedArrayCurr, Currlenghts, paddedArrayNext, maskArrayNext = data
-                # self.CTallmodel.encoder.hidden=self.CTallmodel.encoder.hidden_init(paddedArrayCurr.size(1))
+                self.CTallmodel.encoder.hidden=self.CTallmodel.encoder.hidden_init(paddedArrayCurr.size(1))
                 # print("Image Size: ", real_img_cpu.shape)
                 real_imgs = Variable(real_img_cpu)
                 # txt_embedding = Variable(txt_embedding,requires_grad=False)
@@ -259,17 +264,22 @@ class GANTrainer(object):
                 inputs = (sent_hidden, noise)
                 
                 # print("Before parallel")
-                #_, fake_imgs, mu, logvar = \
-                 #   nn.parallel.data_parallel(netG, inputs, self.gpus) #### TODO: Check Shapes!!!!->Checked
+                _, fake_imgs, mu, logvar = \
+                    nn.parallel.data_parallel(netG, inputs, self.gpus) #### TODO: Check Shapes!!!!->Checked
                 
+		print("Fake images size: ", fake_imgs.size())
                 # _,fake_imgs,mu,logvar=netG(inputs[0],inputs[1])
                 #######################################################
                 # (2.1) Generate captions for fake images
                 ######################################################
                 sents,h_sent=self.eval_utils.captioning_model(real_imgs,self.cap_model,self.vocab,self.my_resnet,self.eval_kwargs)
                 h_sent_var=Variable(torch.FloatTensor(h_sent)).cuda()
-                print("Sentences Input min: ", sentences)
-                print("VCS Input: ", sents)
+                #print("Real Images Size: ", real_imgs.size())
+                #input_layer = tf.stack([preprocess_for_train(i) for i in real_imgs], axis=0)
+                real_imgs = Variable(torch.stack([image_transform_train(img.data.cpu()).cuda() for img in real_imgs], dim=0))
+                #real_imgs = Variable(image_transform_train(real_imgs[0].data.cpu()))
+	        #print("Sentences Input min: ", sentences)
+                #print("VCS Input: ", sents)
 
                 # print("NUmber of sentences: ", len(sents))
                 # print("Hidden Sentence size:", h_sent.shape)
@@ -294,8 +304,8 @@ class GANTrainer(object):
 
 		#print("Coming here")
                 #print(loss_cos.data.cpu().numpy()[0])
-                print("Sentences Input min: ", sentences)
-                print("VCS Input: ", sents)
+                #print("Sentences Input min: ", sentences)
+                #print("VCS Input: ", sents)
 		if np.isnan(loss_cos.data.cpu().numpy()[0]):
 		
 		    print("\n\n")
