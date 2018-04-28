@@ -178,7 +178,11 @@ class TextImageDataset(data.Dataset):
         # bbox = None
         # data_dir = self.data_dir
         img,captions=self.cap[index]
-        idx=np.random.randint(5,size=3)
+	no_of_captions = len(captions)
+
+	cap = np.random.randint(0, no_of_captions)
+
+        idx=[(cap-1)%no_of_captions, cap, (cap+1)%no_of_captions]
         new_captions=[]
         for i in idx:
             new_captions.append(captions[i])
@@ -202,7 +206,7 @@ class TextImageDataset(data.Dataset):
         # word_=sentence[embedding_ix]
         # if self.target_transform is not None:
         #     embedding = self.target_transform(embedding)
-        return img, captions_idx[0],captions_idx[1],captions_idx[2],captions
+        return img, captions_idx[0], captions_idx[1], captions_idx[2], captions
 
     def __len__(self):
         return len(self.cap)

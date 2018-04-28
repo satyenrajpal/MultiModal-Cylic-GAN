@@ -22,6 +22,7 @@ from miscc.utils import compute_discriminator_loss, compute_generator_loss
 from tensorboard import summary
 #from tensorboard import FileWriter
 from ConcurrentThoughtsModel import *
+from logger import *
 
 # import eval_utils as eval_utils
 
@@ -138,6 +139,8 @@ class GANTrainer(object):
 
 
     def train(self, data_loader, stage=1):
+ 	logger = Logger('./logs_CS_GAN')       
+ 
         if stage == 1:
             netG, netD = self.load_network_stageI()
         else:
@@ -145,7 +148,7 @@ class GANTrainer(object):
         #######
         nz = cfg.Z_DIM
         batch_size = self.batch_size
-        flags = Variable(torch.cuda.FloatTensor([1.0]*batch_size))
+        flags = Variable(torch.cuda.FloatTensor([-1.0]*batch_size))
         noise = Variable(torch.FloatTensor(batch_size, nz))
         fixed_noise = \
             Variable(torch.FloatTensor(batch_size, nz).normal_(0, 1),
@@ -187,7 +190,7 @@ class GANTrainer(object):
                     param_group['lr'] = discriminator_lr
             print("Started training")
             optimizerCTallmodel.zero_grad()
-            epoch_loss=0
+            ct_epoch_loss=0
             emb_loss=0
             for i, data in enumerate(data_loader):
             	# print("Starting Loop")
@@ -237,15 +240,18 @@ class GANTrainer(object):
                 loss_prev = self.CTloss(valid_output_prev, Variable(valid_target_prev).cuda())
                 loss_next = self.CTloss(valid_output_next, Variable(valid_target_next).cuda())
                 
-                optimizerCTallmodel.zero_grad()
                 # self.CTencoder.zero_grad()
                 # self.CTdecoder.zero_grad()
-                self.CTallmodel.zero_grad()
-                loss = loss_prev + loss_next
-                loss.backward(retain_graph=True)
-                epoch_loss += loss.data[0]
-                optimizerCTallmodel.step()
-                
+                #self.CTallmodel.zero_grad()
+
+		if (epoch < 500) :
+                    loss = loss_prev + loss_next
+                    loss.backward(retain_graph=True)
+                    ct_epoch_loss += loss.data[0]
+                    nn.utils.clip_grad_norm(self.CTallmodel.parameters(), 0.25)
+		    optimizerCTallmodel.step()
+		    optimizerCTallmodel.zero_grad()               
+ 
                 #######################################################
                 # (2) Generate fake images
                 ######################################################
@@ -253,15 +259,18 @@ class GANTrainer(object):
                 inputs = (sent_hidden, noise)
                 
                 # print("Before parallel")
-                _, fake_imgs, mu, logvar = \
-                    nn.parallel.data_parallel(netG, inputs, self.gpus) #### TODO: Check Shapes!!!!->Checked
+                #_, fake_imgs, mu, logvar = \
+                 #   nn.parallel.data_parallel(netG, inputs, self.gpus) #### TODO: Check Shapes!!!!->Checked
                 
                 # _,fake_imgs,mu,logvar=netG(inputs[0],inputs[1])
                 #######################################################
                 # (2.1) Generate captions for fake images
                 ######################################################
-                sents,h_sent=self.eval_utils.captioning_model(fake_imgs,self.cap_model,self.vocab,self.my_resnet,self.eval_kwargs)
+                sents,h_sent=self.eval_utils.captioning_model(real_imgs,self.cap_model,self.vocab,self.my_resnet,self.eval_kwargs)
                 h_sent_var=Variable(torch.FloatTensor(h_sent)).cuda()
+                print("Sentences Input min: ", sentences)
+                print("VCS Input: ", sents)
+
                 # print("NUmber of sentences: ", len(sents))
                 # print("Hidden Sentence size:", h_sent.shape)
                 # print("Hidden from CT model: ", sent_hidden.size())
@@ -281,20 +290,41 @@ class GANTrainer(object):
                 # (2) Update G network
                 ###########################
                 ##############calculate cosine similarity
-                loss_cos=self.cosEmbLoss(sent_hidden, h_sent_var,flags)
-                netG.zero_grad()
+		loss_cos=self.cosEmbLoss(sent_hidden, h_sent_var,flags)
+
+		#print("Coming here")
+                #print(loss_cos.data.cpu().numpy()[0])
+                print("Sentences Input min: ", sentences)
+                print("VCS Input: ", sents)
+		if np.isnan(loss_cos.data.cpu().numpy()[0]):
+		
+		    print("\n\n")
+                    print("Embedding Loss: ", loss_cos.data[0])
+                    print("\n")
+		    print("Sent Hidden min: ", torch.min(sent_hidden))
+                    print("H_Sent: ", torch.min(h_sent_var))
+                    print("Sentences Input min: ", sentences)
+                    print("VCS Input: ", sents)
+                    print("\n\n")
+
+		netG.zero_grad()
                 # self.CTallmodel.zero_grad()
                 optimizerCTallmodel.zero_grad()
                 optimizerCTenc.zero_grad()
                 errG = compute_generator_loss(netD, fake_imgs,
                                               real_labels, mu, self.gpus)
                 kl_loss = KL_loss(mu, logvar)
-                errG_total = errG + kl_loss * cfg.TRAIN.COEFF.KL+loss_cos
+                if epoch < 500 :
+                    errG_total = errG + kl_loss * cfg.TRAIN.COEFF.KL
+                else :
+                    errG_total = errG + kl_loss * cfg.TRAIN.COEFF.KL + 10*loss_cos
                 errG_total.backward()
                 optimizerG.step()
-                optimizerCTenc.step()
                 emb_loss += loss_cos.data[0]
-                
+
+                if epoch < 500 :
+                    optimizerCTenc.step()
+ 
                 # print("generator updated")
 
                 count = count + 1
@@ -312,7 +342,7 @@ class GANTrainer(object):
                     # self.summary_writer.add_summary(summary_D_f, count)
                     # self.summary_writer.add_summary(summary_G, count)
                     # self.summary_writer.add_summary(summary_KL, count)
-                    print("Loss CT Model: ", epoch_loss)
+                    print("Loss CT Model: ", ct_epoch_loss)
                     print("Emb Loss: ", emb_loss)
                     # save the image result for each epoch
                     inputs = (sent_hidden, fixed_noise)
@@ -331,6 +361,12 @@ class GANTrainer(object):
                   % (epoch, self.max_epoch, i, len(data_loader),
                      errD.data[0], errG.data[0], kl_loss.data[0],
                      errD_real, errD_wrong, errD_fake, (end_t - start_t)))
+            logger.scalar_summary('CT_loss', ct_epoch_loss, epoch+1)
+            logger.scalar_summary('Cosine_loss', emb_loss, epoch+1)
+            logger.scalar_summary('errD_loss', errD.data[0], epoch+1)
+            logger.scalar_summary('errG_loss', errG.data[0], epoch+1)
+            logger.scalar_summary('kl_loss', kl_loss.data[0], epoch+1)
+
             if epoch % self.snapshot_interval == 0:
                 save_model(netG, netD, epoch, self.model_dir)
         #

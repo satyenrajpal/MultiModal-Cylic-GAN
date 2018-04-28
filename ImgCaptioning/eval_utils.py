@@ -186,6 +186,10 @@ def captioning_model(imgs,model,vocab,my_resnet,eval_kwargs={}):
     beam_size = eval_kwargs.get('beam_size', 1)
     batch_size=imgs.size()[0]
 
+    print("\n\n\n\n")
+    print("No of image I got: ", batch_size)
+    print("\n\n\n\n")
+
     # print("Incoming batch size: ", batch_size)
     # print("coming into captioning model")
 
@@ -210,6 +214,10 @@ def captioning_model(imgs,model,vocab,my_resnet,eval_kwargs={}):
         data['att_feats'][np.arange(batch_size) * seq_per_img]]
     tmp = [Variable(torch.from_numpy(_), volatile=True).cuda() for _ in tmp]
     fc_feats, att_feats = tmp
+    
+    print("fc_feats size: ", fc_feats.size()) 
+    print("att_feats size: ", att_feats.size())
+
     # forward the model to also get generated samples for each image
     seq,h_sent = model.sample(fc_feats, att_feats, eval_kwargs) #Dont need to worry about this
     # print("hidden State shape:",h_sent.size())
