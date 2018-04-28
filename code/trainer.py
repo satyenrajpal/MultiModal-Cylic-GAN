@@ -267,7 +267,6 @@ class GANTrainer(object):
                 _, fake_imgs, mu, logvar = \
                     nn.parallel.data_parallel(netG, inputs, self.gpus) #### TODO: Check Shapes!!!!->Checked
                 
-		print("Fake images size: ", fake_imgs.size())
                 # _,fake_imgs,mu,logvar=netG(inputs[0],inputs[1])
                 #######################################################
                 # (2.1) Generate captions for fake images
