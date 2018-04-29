@@ -153,26 +153,31 @@ def get_features(imgs,my_resnet):
     # infos = []
     imgs_tn=imgs.data
     imgs_tn = torch.add(imgs_tn, 1)/2
-    for i in range(batch_size):
+    #print("Before getting batches: ", imgs_tn.size())
+    fc_batch, att_batch = my_resnet(Variable(imgs_tn))
+    
+    #for i in range(batch_size):
         # print("Size of image tensir full: ", imgs_tn.size())
-        img = imgs_tn[i]
-        # print("Size of the each tensor: ", img.size())
+    #    img = imgs_tn[i]
+        #print("Size of the each tensor: ", img.size())
 ################################################
             # img = img.astype('float32')/255.0 #Check if 255 is required or not. Img from StackGAN might be from 0 to 1
             # img = torch.from_numpy(img.transpose([2,0,1])).cuda() #
         
+    #    img = Variable(preprocess(img), volatile=True)
         #img = Variable(preprocess(img), volatile=True)
-        img = Variable(preprocess(img), volatile=True)
-        tmp_fc, tmp_att = my_resnet(img)
+    #    tmp_fc, tmp_att = my_resnet(img)
 
-        fc_batch[i] = tmp_fc.data.cpu().float().numpy()
-        att_batch[i] = tmp_att.data.cpu().float().numpy()
+    #    fc_batch[i] = tmp_fc.data.cpu().float().numpy()
+    #    att_batch[i] = tmp_att.data.cpu().float().numpy()
 
+    #print("FC_batch size: ", fc_batch.size())
+    #print("AT_batch_size: ", att_batch.suze())
     data = {}
     data['fc_feats'] = fc_batch
     data['att_feats'] = att_batch
 ###################################################
-    return data
+    return fc_batch, att_batch
 
 
 def captioning_model(imgs,model,vocab,my_resnet,eval_kwargs={}):
@@ -192,8 +197,9 @@ def captioning_model(imgs,model,vocab,my_resnet,eval_kwargs={}):
     model.eval()
 
     # loader.reset_iterator(split)#
-    data=get_features(imgs,my_resnet)
-    
+    fc_feats, att_feats=get_features(imgs,my_resnet)
+    fc_feats = fc_feats.contiguous()    
+    att_feats = att_feats.contiguous()
     # print("got the features in cm")
 
     n = 0
@@ -205,10 +211,14 @@ def captioning_model(imgs,model,vocab,my_resnet,eval_kwargs={}):
     # while True:
         # forward the model to also get generated samples for each image
         # Only leave one feature for each image, in case duplicate sample
-    tmp = [data['fc_feats'][np.arange(batch_size) * seq_per_img], 
-        data['att_feats'][np.arange(batch_size) * seq_per_img]]
-    tmp = [Variable(torch.from_numpy(_), volatile=True).cuda() for _ in tmp]
-    fc_feats, att_feats = tmp
+    #tmp = [data['fc_feats'][np.arange(batch_size) * seq_per_img], 
+    #    data['att_feats'][np.arange(batch_size) * seq_per_img]]
+    #tmp = [Variable(torch.from_numpy(_), volatile=True).cuda() for _ in tmp]
+    #fc_feats, att_feats = data
+    #print("\n\n\n\n\nIn captioning model\n\n\n\n\n")
+    #print("Type: ", type(fc_feats))
+    #print("FC_feats size: ", fc_feats.size())
+    #print("Att_feats size: ", att_feats.size())
     
     # forward the model to also get generated samples for each image
     seq,h_sent = model.sample(fc_feats, att_feats, eval_kwargs) #Dont need to worry about this

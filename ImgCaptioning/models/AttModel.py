@@ -34,6 +34,7 @@ class AttModel(CaptionModel):
         self.num_layers = opt.num_layers
         self.drop_prob_lm = opt.drop_prob_lm
         self.seq_length = opt.seq_length
+        print("Seq_lenght size: ", self.seq_length)
         self.fc_feat_size = opt.fc_feat_size
         self.att_feat_size = opt.att_feat_size
         self.att_hid_size = opt.att_hid_size

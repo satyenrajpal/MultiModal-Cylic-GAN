@@ -337,7 +337,7 @@ class GANTrainer(object):
                 # print("generator updated")
 
                 count = count + 1
-                if i % 100 == 0:
+                if i % 10 == 0:
                     # summary_D = summary.scalar('D_loss', errD.data[0])
                     # summary_D_r = summary.scalar('D_loss_real', errD_real)
                     # summary_D_w = summary.scalar('D_loss_wrong', errD_wrong)
@@ -377,9 +377,9 @@ class GANTrainer(object):
             logger.scalar_summary('kl_loss', kl_loss.data[0], epoch+1)
 
             if epoch % self.snapshot_interval == 0:
-                save_model(netG, netD, epoch, self.model_dir)
+                save_model(netG, netD, self.CTallmodel, epoch, self.model_dir)
         #
-        save_model(netG, netD, self.max_epoch, self.model_dir)
+        save_model(netG, netD, self.CTallmodel, self.max_epoch, self.model_dir)
         #
         # self.summary_writer.close()
 

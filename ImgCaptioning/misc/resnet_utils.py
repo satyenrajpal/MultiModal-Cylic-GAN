@@ -9,7 +9,12 @@ class myResnet(nn.Module):
         self.resnet = resnet
 
     def forward(self, img, att_size=14):
-        x = img.unsqueeze(0)
+        #print("RESNET DETAILS \n\n")
+        #print("Input size: ", img.size())
+        #x = img.unsqueeze(0)
+        x = img
+        #print("X size: ", x.size())
+        #print("X type: ", type(x))
 
         x = self.resnet.conv1(x)
         x = self.resnet.bn1(x)
@@ -21,8 +26,18 @@ class myResnet(nn.Module):
         x = self.resnet.layer3(x)
         x = self.resnet.layer4(x)
 
-        fc = x.mean(3).mean(2).squeeze()
-        att = F.adaptive_avg_pool2d(x,[att_size,att_size]).squeeze().permute(1, 2, 0)
-        
+        #print("before fc layer: ", x.size())
+        #fc = x.mean(3).mean(2).squeeze()
+        fc = x.mean(3).mean(2)
+        #print("after fc layer: ", fc.size())
+        att = F.adaptive_avg_pool2d(x,[att_size,att_size])
+        #print("Adaptive avg_pool: ", att.size())
+        #att = att.squeeze()
+        att = att
+        #print("After squeezeL ", att.size())
+        #att = att.permute(1, 2, 0)
+        att = att.permute(0, 2, 3, 1)
+        #print("att layer size: ", att.size())
+	        
         return fc, att
 

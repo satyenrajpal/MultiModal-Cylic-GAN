@@ -179,7 +179,7 @@ if __name__ == "__main__":
             transforms.Resize([cfg.IMSIZE,cfg.IMSIZE]),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
         dataset = TextImageDataset(data_dir=cfg.DATA_DIR,ann_file=cfg.ANN_FILE,
             imsize=cfg.IMSIZE,emb_model=cfg.EMB_MODEL,transform=image_transform,vocab_file=vocab)
         

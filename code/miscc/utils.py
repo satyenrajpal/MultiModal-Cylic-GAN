@@ -98,6 +98,7 @@ def save_img_results(data_img, fake, epoch, image_dir,captions):
     num = 10
 
     fake = fake[0:num]
+    print("fake :", fake.size())
     # data_img is changed to [0,1]
     if data_img is not None:
         data_img = data_img[0:num]
@@ -107,7 +108,7 @@ def save_img_results(data_img, fake, epoch, image_dir,captions):
         # fake.data is still [-1, 1]
         vutils.save_image(
             fake.data, '%s/fake_samples_epoch_%03d.png' %
-            (image_dir, epoch), normalize=True)
+            (image_dir, epoch), nrow=2, normalize=True)
     else:
         vutils.save_image(
             fake.data, '%s/lr_fake_schangesamples_epoch_%03d.png' %
@@ -119,14 +120,18 @@ def save_img_results(data_img, fake, epoch, image_dir,captions):
         file_.write('\n')
 
 
-def save_model(netG, netD, epoch, model_dir):
+def save_model(netG, netD, ctModel, epoch, model_dir):
     torch.save(
         netG.state_dict(),
         '%s/netG_epoch_%d.pth' % (model_dir, epoch))
     torch.save(
         netD.state_dict(),
         '%s/netD_epoch_last.pth' % (model_dir))
-    print('Save G/D models')
+    torch.save(
+        ctModel.state_dict(),
+        '%s/ct_all_model_%d.pth' % (model_dir, epoch))
+        
+    print('Save G/D models along with encoder model')
 
 
 def mkdir_p(path):
