@@ -337,7 +337,7 @@ class GANTrainer(object):
                 # print("generator updated")
 
                 count = count + 1
-                if i % 10 == 0:
+                if i % 100 == 0:
                     # summary_D = summary.scalar('D_loss', errD.data[0])
                     # summary_D_r = summary.scalar('D_loss_real', errD_real)
                     # summary_D_w = summary.scalar('D_loss_wrong', errD_wrong)
@@ -351,6 +351,7 @@ class GANTrainer(object):
                     # self.summary_writer.add_summary(summary_D_f, count)
                     # self.summary_writer.add_summary(summary_G, count)
                     # self.summary_writer.add_summary(summary_KL, count)
+                    # print("Current run: ", i)
                     print("Loss CT Model: ", ct_epoch_loss)
                     print("Emb Loss: ", emb_loss)
                     # save the image result for each epoch
