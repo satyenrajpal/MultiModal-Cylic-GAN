@@ -249,7 +249,7 @@ class GANTrainer(object):
                 # self.CTdecoder.zero_grad()
                 #self.CTallmodel.zero_grad()
 
-		if (epoch < 500) :
+		if (epoch < 100) :
                     loss = loss_prev + loss_next
                     loss.backward(retain_graph=True)
                     ct_epoch_loss += loss.data[0]
@@ -323,7 +323,7 @@ class GANTrainer(object):
                 errG = compute_generator_loss(netD, fake_imgs,
                                               real_labels, mu, self.gpus)
                 kl_loss = KL_loss(mu, logvar)
-                if epoch < 500 :
+                if epoch < 100 :
                     errG_total = errG + kl_loss * cfg.TRAIN.COEFF.KL
                 else :
                     errG_total = errG + kl_loss * cfg.TRAIN.COEFF.KL + 10*loss_cos
@@ -331,7 +331,7 @@ class GANTrainer(object):
                 optimizerG.step()
                 emb_loss += loss_cos.data[0]
 
-                if epoch < 500 :
+                if epoch < 100 :
                     optimizerCTenc.step()
  
                 # print("generator updated")
