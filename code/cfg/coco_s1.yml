@@ -5,8 +5,8 @@ EMBEDDING_TYPE: 'cnn-rnn'
 GPU_ID: '0'
 CUDA: True
 Z_DIM: 512
-DATA_DIR: '/home/ubuntu/val2014'
-ANN_FILE: '/home/ubuntu/coco/annotations/captions_val2014.json'
+DATA_DIR: '/home/ubuntu/new_volume/train2014'
+ANN_FILE: '/home/ubuntu/coco/annotations/captions_train2014.json'
 EMB_MODEL: '//home/ubuntu/BaLSaKGAN-/data_StckGAN/glove/glove.6B.50d.txt'
 IMSIZE: 256
 WORKERS: 4

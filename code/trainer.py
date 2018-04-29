@@ -357,9 +357,9 @@ class GANTrainer(object):
                     inputs = (sent_hidden, fixed_noise)
                     lr_fake, fake, _, _ = \
                         nn.parallel.data_parallel(netG, inputs, self.gpus)
-                    save_img_results(real_img_cpu, fake, epoch, self.image_dir,sentences)
-                    if lr_fake is not None:
-                        save_img_results(None, lr_fake, epoch, self.image_dir,sentences)
+            save_img_results(real_img_cpu, fake, epoch, self.image_dir,sentences)
+            if lr_fake is not None:
+                save_img_results(None, lr_fake, epoch, self.image_dir,sentences)
             
             end_t = time.time()
                 

@@ -98,7 +98,6 @@ def save_img_results(data_img, fake, epoch, image_dir,captions):
     num = 10
 
     fake = fake[0:num]
-    print("fake :", fake.size())
     # data_img is changed to [0,1]
     if data_img is not None:
         data_img = data_img[0:num]
