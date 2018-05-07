@@ -175,10 +175,10 @@ class GANTrainer(object):
                 noise.data.normal_(0, 1)
                 inputs = (txt_embedding, noise)
 
-                # _, fake_imgs, mu, logvar = \
-                    # nn.parallel.data_parallel(netG, inputs, self.gpus)
-                _,fake_imgs,mu,logvar=netG(inputs[0],inputs[1])
-                print("Fake Images generated")
+                _, fake_imgs, mu, logvar = \
+                    nn.parallel.data_parallel(netG, inputs, self.gpus)
+                # _,fake_imgs,mu,logvar=netG(inputs[0],inputs[1])
+                # print("Fake Images generated")
                 #######################################################
                 # (2.1) Generate captions for fake images
                 ######################################################
@@ -195,7 +195,7 @@ class GANTrainer(object):
                 errD.backward()
                 optimizerD.step()
                 ############################
-                # (2) Update G network
+                # (4) Update G network
                 ###########################
                 netG.zero_grad()
                 errG = compute_generator_loss(netD, fake_imgs,

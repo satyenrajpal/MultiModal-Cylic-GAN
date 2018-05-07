@@ -23,6 +23,7 @@ __C.STAGE1_G = ''
 __C.DATA_DIR = '/media/satyen/d73f90fb-89d2-4cd2-b448-a96b558e5b72/satyen/GitHub_repos/cocoapi/val2014'
 __C.ANN_FILE = '/media/satyen/d73f90fb-89d2-4cd2-b448-a96b558e5b72/satyen/GitHub_repos/cocoapi/annotations/captions_val2014.json'
 __C.EMB_MODEL= '/media/satyen/d73f90fb-89d2-4cd2-b448-a96b558e5b72/satyen/GitHub_repos/GloVe/glove.6B.50d.txt'
+__C.CTModel=''
 __C.VIS_COUNT = 64
 
 __C.Z_DIM = 100

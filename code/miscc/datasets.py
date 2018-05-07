@@ -178,9 +178,9 @@ class TextImageDataset(data.Dataset):
         # bbox = None
         # data_dir = self.data_dir
         img,captions=self.cap[index]
-	no_of_captions = len(captions)
+        no_of_captions = len(captions)
 
-	cap = np.random.randint(0, no_of_captions)
+        cap = np.random.randint(0, no_of_captions)
 
         idx=[(cap-1)%no_of_captions, cap, (cap+1)%no_of_captions]
         new_captions=[]
@@ -197,11 +197,11 @@ class TextImageDataset(data.Dataset):
         # img_name = '%s/images/%s.jpg' % (data_dir, key)
         # img = self.get_img(img_name, bbox)
         # while(True):
-        # 	embedding_ix = random.randint(0, len(embeddings)-1)
-        	
-        # 	embedding = embeddings[embedding_ix]
-        # 	if(embedding is not None):
-        # 		break
+        #   embedding_ix = random.randint(0, len(embeddings)-1)
+            
+        #   embedding = embeddings[embedding_ix]
+        #   if(embedding is not None):
+        #       break
         # # print(embedding.shape)
         # word_=sentence[embedding_ix]
         # if self.target_transform is not None:

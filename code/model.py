@@ -7,6 +7,7 @@ from torch.autograd import Variable
 
 def conv3x3(in_planes, out_planes, stride=1):
     "3x3 convolution with padding"
+    #Conv2d->I/p channels, O/P channels, kernel,stride, padding,dilation
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
                      padding=1, bias=False)
 
@@ -20,6 +21,23 @@ def upBlock(in_planes, out_planes):
         nn.ReLU(True))
     return block
 
+def upBlock_conv(in_planes,out_planes,dil=False):
+    #Conv2d->I/p channels, O/P channels, kernel,stride, padding,O/P padding,dilation
+    if not dil:
+        block= nn.Sequential(
+        nn.ConvTranspose2d(in_planes,out_planes,kernel_size=4,padding=1,
+        stride=2,bias=False),
+        nn.Dropout2d(0.3),
+        nn.LeakyReLU(0.2,inplace=True),
+        nn.BatchNorm2d(out_planes))
+    else:
+        block= nn.Sequential(
+        nn.ConvTranspose2d(in_planes,out_planes,kernel_size=3,padding=2,
+        stride=2,bias=False,dilation=2,output_padding=1),
+        nn.Dropout2d(0.3),
+        nn.LeakyReLU(0.2,inplace=True),
+        nn.BatchNorm2d(out_planes))
+    return block
 
 class ResBlock(nn.Module):
     def __init__(self, channel_num):
@@ -125,17 +143,20 @@ class STAGE1_G(nn.Module):
             nn.ReLU(True))
 
         # ngf x 4 x 4 -> ngf/2 x 8 x 8
-        self.upsample1 = upBlock(ngf, ngf // 2)
+        self.upsample1 = upBlock_conv(ngf, ngf // 2)
         # -> ngf/4 x 16 x 16
-        self.upsample2 = upBlock(ngf // 2, ngf // 4)
+        self.upsample2 = upBlock_conv(ngf // 2, ngf // 4)
         # -> ngf/8 x 32 x 32
-        self.upsample3 = upBlock(ngf // 4, ngf // 8)
+        self.upsample3 = upBlock_conv(ngf // 4, ngf // 8,dil=True)
         # -> ngf/16 x 64 x 64
-        self.upsample4 = upBlock(ngf // 8, ngf // 16)
+        self.upsample4 = upBlock_conv(ngf // 8, ngf // 16,dil=True)
         # -> 3 x 64 x 64
         self.img = nn.Sequential(
-            conv3x3(ngf // 16, 3),
+            conv3x3(ngf // 16, ngf//32),
+            nn.LeakyReLU(0.2,inplace=True),
+            conv3x3(ngf//32,3),
             nn.Tanh())
+            # nn.WeightNorm('W1',ngf//32),
 
     def forward(self, text_embedding, noise):
         c_code, mu, logvar = self.ca_net(text_embedding)
@@ -144,23 +165,41 @@ class STAGE1_G(nn.Module):
 
         h_code = h_code.view(-1, self.gf_dim, 4, 4)
         h_code = self.upsample1(h_code)
+        
         h_code = self.upsample2(h_code)
         h_code = self.upsample3(h_code)
         h_code = self.upsample4(h_code)
         # state size 3 x 64 x 64
         fake_img = self.img(h_code)
+        # print("Expected Size:64x64, actual size:",fake_img.size())
         return None, fake_img, mu, logvar
 
+def stride_block(in_planes,out_planes):
+    #Conv2d->I/p channels, O/P channels, kernel,stride, padding,dilation
+    # n=torch.cat((con3x3(in_planes,out_planes1)(image),image),1)    
+    later=nn.Sequential(
+    nn.Conv2d(in_planes,out_planes,4,2,1,bias=False),
+    nn.LeakyReLU(0.2,inplace=True),
+    nn.BatchNorm2d(out_planes))
+    return later
 
 class STAGE1_D(nn.Module):
-    def __init__(self):
+    def __init__(self,new_arch):
         super(STAGE1_D, self).__init__()
         self.df_dim = cfg.GAN.DF_DIM
         self.ef_dim = cfg.GAN.CONDITION_DIM
-        self.define_module()
+        self.new_arch=new_arch
+        self.get_cond_logits = D_GET_LOGITS(self.df_dim, self.ef_dim)
+        self.get_uncond_logits = None
+        if not new_arch:
+            self.define_module()
+        else:
+            self.define_dense_module()
 
+        
     def define_module(self):
         ndf, nef = self.df_dim, self.ef_dim
+        #Conv2d->I/p channels, O/P channels, kernel,stride, padding,dilation
         self.encode_img = nn.Sequential(
             nn.Conv2d(3, ndf, 4, 2, 1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
@@ -178,15 +217,34 @@ class STAGE1_D(nn.Module):
             # state size (ndf * 8) x 4 x 4)
             nn.LeakyReLU(0.2, inplace=True)
         )
-
-        self.get_cond_logits = D_GET_LOGITS(ndf, nef)
-        self.get_uncond_logits = None
+        # self.
+        # self.get_cond_logits = D_GET_LOGITS(ndf, nef)
+        # self.get_uncond_logits = None
+        
+    def define_dense_module(self):
+        ndf, nef = self.df_dim, self.ef_dim
+        self.conv1=conv3x3(3,ndf//12)               #<-Dim here should be 64 
+        self.dense1=stride_block(ndf//12+3,ndf//6)  #<-Dim Output here should be 32
+        self.conv2=conv3x3(ndf//6,ndf//12)          #<-Dim here should be 32
+        self.dense2=stride_block(ndf//6+ndf//12,ndf)#<-Dim output here should be 16
+        self.conv3=conv3x3(ndf,ndf//2)              #<-Dim here should be 16
+        self.dense3=stride_block(ndf+ndf//2,ndf*4)  #<-Dim output here should be 8
+        self.conv4=conv3x3(ndf*4,ndf*2)             #<-Dim here should be 8
+        self.dense4=stride_block(ndf*4+ndf*2,ndf*8) #<-Dim output here should be 4
 
     def forward(self, image):
-        img_embedding = self.encode_img(image)
-
+        if not self.new_arch:
+            img_embedding = self.encode_img(image)
+        else:
+            n=torch.cat((self.conv1(image),image),1)    
+            n=self.dense1(n)
+            n=torch.cat((self.conv2(n),n),1)
+            n=self.dense2(n)
+            n=torch.cat((self.conv3(n),n),1)
+            n=self.dense3(n)
+            n=torch.cat((self.conv4(n),n),1)
+            img_embedding=self.dense4(n)            
         return img_embedding
-
 
 # ############# Networks for stageII GAN #############
 class STAGE2_G(nn.Module):

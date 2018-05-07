@@ -1,5 +1,6 @@
 from __future__ import print_function
-import torch.backends.cudnn as cudnn
+# import torch.backends.cudnn as cudnn
+import tensorflow as tf
 import torch
 import torchvision.transforms as transforms
 
@@ -17,11 +18,12 @@ from torch.utils.data.dataloader import _use_shared_memory
 dir_path = (os.path.abspath(os.path.join(os.path.realpath(__file__), './.')))
 sys.path.append(dir_path)
 import pickle
-from miscc.datasets import TextImageDataset
+from miscc.datasets_new import TextImageDataset
 from miscc.config import cfg, cfg_from_file
 from miscc.utils import mkdir_p
 from trainer import GANTrainer
 from six.moves import cPickle
+import pickle
 
 def collate_fn(data):
     
@@ -35,14 +37,11 @@ def collate_fn(data):
     img = [i for i in img]
     img=torch.stack(img,dim=0)
     img=torch.squeeze(img)
-    # print("converted to a single tensor")
 
-    # print("Image batch size",img.size())
     #Sentences are as numpy arrays
     sentences = [i for i in sentences]
     sentences=np.array(sentences)
-    # print("Sizeof sentences: ",sentences.shape)
-    # print(sentences)
+
     ## Now padding the X
     Xlenghts = [Sample.shape[0] for Sample in X]
     Ylenghts = [Sample.shape[0] for Sample in Y]
@@ -95,10 +94,12 @@ def parse_args():
                 help='path to infos to evaluate')
     parser.add_argument('--cap_dir', type=str,  default='ImgCaptioning',
                 help='Path to ImageCaptioning dir')
-    parser.add_argument('--vocab_file', type=str, default=os.getcwd(),
+    parser.add_argument('--vocab_file', type=str, default=None,
         help='manual seed',dest='vocab_file')
-    
+    parser.add_argument('--caption_model',type=str,default='topdown',
+        dest='caption_model')
     parser.add_argument('--manualSeed', type=int, help='manual seed',dest='manualSeed')
+    parser.add_argument('--new_arch',type=int,help='To use new arch or not',dest='new_arch',default=0)
     args = parser.parse_args()
     return args
 
@@ -122,8 +123,6 @@ if __name__ == "__main__":
     from resnet_utils import myResnet
     if torch.cuda.is_available():
         print("Using CUDA")
-    #if args.data_dir != '':
-     #   cfg.DATA_DIR = args.data_dir
     print('Using config:')
     pprint.pprint(cfg)
     if opt.manualSeed is None:
@@ -140,46 +139,63 @@ if __name__ == "__main__":
     num_gpu = len(cfg.GPU_ID.split(','))
 
     #Load image captioning model here
-    with open(opt.infos_path) as f:
-        infos = cPickle.load(f)
+    # with open(opt.infos_path,'rb') as f:
+    #      infos = cPickle.load(f,encoding='bytes')
 
-    ignore = ["id", "batch_size", "beam_size", "start_from", "language_eval"]
-    for k in vars(infos['opt']).keys():
-        if k not in ignore:
-            if k in vars(opt):
-                assert vars(opt)[k] == vars(infos['opt'])[k], k + ' option not consistent'
-            else:
-                vars(opt).update({k: vars(infos['opt'])[k]}) # copy over options from model
-
-
+    # ignore = ["id", "batch_size", "beam_size", "start_from", "language_eval"]
+    # for k in vars(infos[b'opt']).keys():
+    #     if k not in ignore:
+    #         if k in vars(opt):
+    #             assert vars(opt)[k] == vars(infos[b'opt'])[k], k + ' option not consistent'
+    #         else:
+    #             vars(opt).update({k: vars(infos[b'opt'])[k]}) # copy over options from model
+    vocab=None
+    if opt.vocab_file is not None:
+        with open(opt.vocab_file, 'rb') as handle:
+            vocab = pickle.load(handle)
+    
+    # vars(opt).update({'vocab_size':5257})
+    # vars(opt).update({'input_encoding_size':512})#input_encoding_size=512
+    # vars(opt).update({'att_feat_size':2048})#=2048, 
+    # vars(opt).update({'att_hid_size':512})#att_hid_size=512 , 
+    # vars(opt).update({'rnn_size':512})#rnn_size=512
+    # vars(opt).update({'rnn_type':'lstm'})#rnn_type='lstm',
+    
+    # vars(opt).update({'seq_length':16})
+    # vars(opt).update({'seq_per_img':5})
+    # vars(opt).update({'num_layers':1})
+    # vars(opt).update({'drop_prob_lm':0.5})
+    # vars(opt).update({'fc_feat_size':2048})
+    
+#    seq_length=16
+#    seq_per_img=5
+    
     # vocab = infos['vocab'] # ix -> word mapping
-
-    cap_model = models.setup(opt)
-    cap_model.load_state_dict(torch.load(opt.model))
-    cap_model.cuda()
-    cap_model.eval()
-    #ResNet MODEL
-    cnn_model = 'resnet101'
-    my_resnet = getattr(resnet, cnn_model)()
-    my_resnet.load_state_dict(torch.load(opt.cnn_model_dir))
-    my_resnet = myResnet(my_resnet)
-    my_resnet.cuda()
-    my_resnet.eval()
-    
-    if opt.vocab_file is None:
-        print("No vocab file input")
-        sys.exit()
-    with open(opt.vocab_file, 'rb') as handle:
-        vocab = pickle.load(handle)
-    
-
+# (, batch_size=10, beam_size=1, 
+#     caption_model='topdown', checkpoint_path='log_td', current_lr=0.00013107200000000006,
+#      drop_prob_lm=0.5, fc_feat_size=2048, grad_clip=0.1, id='td', input_att_dir='data/cocotalk_att',
+#      9, optim_beta=0.999, optim_epsilon=1e-08,  save_checkpoint_every=3000, scheduled_sampling_increase_every=5, scheduled_sampling_increase_prob=0.05, scheduled_sampling_max_prob=0.25, scheduled_sampling_start=0, self_critical_after=-1, seq_length=,, ss_prob=0.2, 
+     # start_from='log_td', train_only=0, val_images_use=5000, vocab_size=9487, weight_decay=0
+    # cap_model = models.setup(opt)
+    # cap_model.load_state_dict(torch.load(opt.model))
+    # cap_model.cuda()
+    # cap_model.eval()
+    # #ResNet MODEL
+    # cnn_model = 'resnet101'
+    # my_resnet = getattr(resnet, cnn_model)()
+    # my_resnet.load_state_dict(torch.load(opt.cnn_model_dir))
+    # my_resnet = myResnet(my_resnet)
+    # my_resnet.cuda()
+    # my_resnet.eval()
+    my_resnet=None    
+    cap_model=None
     if cfg.TRAIN.FLAG:
         image_transform = transforms.Compose([
             transforms.ToPILImage(),
             transforms.Resize([cfg.IMSIZE,cfg.IMSIZE]),
-            transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+            # transforms.RandomHorizontalFlip(),
         dataset = TextImageDataset(data_dir=cfg.DATA_DIR,ann_file=cfg.ANN_FILE,
             imsize=cfg.IMSIZE,emb_model=cfg.EMB_MODEL,transform=image_transform,vocab_file=vocab)
         
@@ -187,7 +203,7 @@ if __name__ == "__main__":
             dataset, batch_size=cfg.TRAIN.BATCH_SIZE * num_gpu,collate_fn=collate_fn,
             drop_last=True, shuffle=True, num_workers=int(cfg.WORKERS))
 
-        algo = GANTrainer(output_dir, cap_model,vocab,eval_utils,my_resnet,eval_kwargs=vars(opt))
+        algo = GANTrainer(output_dir, cap_model,vocab,eval_utils,my_resnet,opt.new_arch,eval_kwargs=vars(opt))
         algo.train(dataloader, cfg.STAGE)
     else:
         datapath= '%s/test/val_captions.t7' % (cfg.DATA_DIR)

@@ -126,7 +126,6 @@ class TextImageDataset(data.Dataset):
         # (number_of_words x embedding_dim) format
         snt_idx=np.random.randint(0,len(captions)-1)
         sentence=captions[snt_idx].replace(".","").lower().split()
-        # print(sentence)
         embeddings=[self.glove.get(x) for x in sentence]
         return np.array(embeddings),sentence
 

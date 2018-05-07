@@ -106,7 +106,7 @@ if __name__ == "__main__":
     if cfg.TRAIN.FLAG:
         image_transform = transforms.Compose([
             transforms.ToPILImage(),
-            transforms.ReandomCrop([cfg.IMSIZE,cfg.IMSIZE]),
+            transforms.RandomCrop([cfg.IMSIZE,cfg.IMSIZE]),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
