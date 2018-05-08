@@ -2,15 +2,16 @@ CONFIG_NAME: 'stageI'
 
 DATASET_NAME: 'coco'
 EMBEDDING_TYPE: 'cnn-rnn'
-GPU_ID: '0,1'
-CUDA: True
-Z_DIM: 512
-DATA_DIR: '/pylon5/ir5fp2p/satyenr/train2014'
-ANN_FILE: '/pylon5/ir5fp2p/satyenr/annotations/captions_train2014.json'
-EMB_MODEL: '/pylon5/ir5fp2p/satyenr/GloVe/glove.6B.50d.txt'
-CTModel: '/pylon5/ir5fp2p/satyenr/coco_stageI_2018_04_30_18_06_01/Model/ct_all_model_10.pth'
-NET_G: '/pylon5/ir5fp2p/satyenr/coco_stageI_2018_04_30_18_06_01/Model/netG_epoch_10.pth' 
-NET_D: '/pylon5/ir5fp2p/satyenr/coco_stageI_2018_04_30_18_06_01/Model/netD_epoch_last.pth'
+GPU_ID: None
+CUDA: False
+Z_DIM: 100
+DATA_DIR: '/media/satyen/d73f90fb-89d2-4cd2-b448-a96b558e5b72/satyen/Cloned_repos/cocoapi/val2014'
+ANN_FILE: '/media/satyen/d73f90fb-89d2-4cd2-b448-a96b558e5b72/satyen/Cloned_repos/cocoapi/annotations/captions_val2014.json'
+EMB_MODEL: '/media/satyen/d73f90fb-89d2-4cd2-b448-a96b558e5b72/satyen/Cloned_repos/GloVe/glove.6B.50d.txt'
+FAKEIMSIZE: 64
+CTModel: ''
+NET_G: ''
+NET_D: ''
 IMSIZE: 256
 WORKERS: 4
 STAGE: 1
@@ -26,9 +27,9 @@ TRAIN:
       KL: 2.0
 
 GAN:
-    CONDITION_DIM: 512
+    CONDITION_DIM: 128
     DF_DIM: 96
     GF_DIM: 192
 
 TEXT:
-    DIMENSION: 512
+    DIMENSION: 50

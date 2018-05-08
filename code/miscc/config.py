@@ -28,6 +28,7 @@ __C.VIS_COUNT = 64
 
 __C.Z_DIM = 100
 __C.IMSIZE = 64
+__C.FAKEIMSIZE=64
 __C.STAGE = 1
 
 

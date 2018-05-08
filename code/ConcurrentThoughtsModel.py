@@ -11,6 +11,7 @@ from collections import namedtuple
 import torch.nn.utils.weight_norm as weightNorm
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 import torch.autograd as autograd
+import torch
 
 class STEncoder(nn.Module):
     def __init__(self, num_layers, hidden_size, bidirection, embedding_dim):
@@ -24,7 +25,7 @@ class STEncoder(nn.Module):
         
         self.embedding_dim = embedding_dim
         
-        self.rnn = nn.LSTM(input_size=self.embedding_dim, hidden_size=self.thought_size, num_layers=self.num_layers, batch_first=False, bidirectional=True)
+        self.rnn = nn.LSTM(input_size=128, hidden_size=self.thought_size, num_layers=self.num_layers, batch_first=False, bidirectional=True)
         
     def hidden_init(self, batch_size):      
         if torch.cuda.is_available():
@@ -62,8 +63,8 @@ class STDuoDecoderAttn(nn.Module):
         self.hidden2 = nn.Parameter(hidden2)
         
         ##LSTM cells for the decoder
-        self.lstmcell_prev = nn.LSTMCell(self.thought_size+self.embedding_dim, self.hidden_size)
-        self.lstmcell_next = nn.LSTMCell(self.thought_size+self.embedding_dim, self.hidden_size)
+        self.lstmcell_prev = nn.LSTMCell(128+128, self.hidden_size)
+        self.lstmcell_next = nn.LSTMCell(128+128, self.hidden_size)
         
         self.wordProject = nn.Linear(in_features=self.hidden_size, out_features=self.num_embeddings)
         self.init_weights()
@@ -119,32 +120,62 @@ class STDuoDecoderAttn(nn.Module):
     
 
 class UniSKIP_variant(nn.Module):
-    def __init__(self, encoder_model, decoder_model, embedding_dim, vocab_size):
+    def __init__(self, encoder_model, decoder_model, embedding_dim, vocab_size,glove_model,word2idx,idx2word):
         super(UniSKIP_variant, self).__init__()
         self.encoder = encoder_model
         self.decoder = decoder_model
         self.vocab_size = vocab_size
         self.embedding_dim = embedding_dim
-        
-        self.wordembed = nn.Embedding(num_embeddings=self.vocab_size, embedding_dim=self.embedding_dim)
+        self.glove=glove_model
+        self.word2idx=word2idx
+        self.idx2word=idx2word
+        # self.wordembed = nn.Embedding(num_embeddings=self.vocab_size, embedding_dim=self.embedding_dim)
         # self.init_weights()
+        self.linear = nn.Linear(in_features=50, out_features=128) 
         
-    def init_weights(self):
-        initrange = 0.1
-        self.wordembed.bias.data.fill_(0)
-        self.wordembed.weight.data.uniform_(-initrange, initrange)
-        
+    # def init_weights(self):
+    #     initrange = 0.1
+    #     self.wordembed.bias.data.fill_(0)
+    #     self.wordembed.weight.data.uniform_(-initrange, initrange)
+
+    def get_embeddings(self,stnce_batch):
+        batch_emb=[]
+        for i in stnce_batch:
+            curr_sent=i.data.cpu().numpy().flatten()
+            curr_sent_to_emb=[self.glove.get(self.idx2word[j])for j in curr_sent]
+            batch_emb.append(np.array(curr_sent_to_emb))
+        return torch.from_numpy(np.array(batch_emb))
+
+
     def forward(self, inputCurr, inputLenghts, inputPrev, inputNext):
         
         # Get the thought of the current sentence
-        # print(type(inputCurr))
-        word_embed_curr = F.tanh(self.wordembed(inputCurr))
+        # print(inputCurr.data)
+
+        # word_embed_curr = F.tanh(self.wordembed(inputCurr))
+
+        word_embed_curr=autograd.Variable(self.get_embeddings(inputCurr), requires_grad=False)
+
+        if torch.cuda.is_available():
+            word_embed_curr=word_embed_curr.cuda()
+
+        word_embed_curr=self.linear(word_embed_curr)
+
         output_ofLastHiddenState = self.encoder(word_embed_curr, inputLenghts)
-        
         # Get the embedding for prev and next sentence 
-        word_embed_prev = F.tanh(self.wordembed(inputPrev))        
-        word_embed_next = F.tanh(self.wordembed(inputNext))
-        
+        # word_embed_prev = F.tanh(self.wordembed(inputPrev))        
+        # word_embed_next = F.tanh(self.wordembed(inputNext))
+
+        word_embed_prev=autograd.Variable(self.get_embeddings(inputPrev), requires_grad=False)
+        word_embed_next=autograd.Variable(self.get_embeddings(inputNext), requires_grad=False)
+
+        if torch.cuda.is_available():
+            word_embed_next=word_embed_next.cuda()
+            word_embed_prev=word_embed_prev.cuda()
+
+        word_embed_prev=self.linear(word_embed_prev)
+        word_embed_next=self.linear(word_embed_next)
+
         logits_prev, logits_next = self.decoder(word_embed_prev, word_embed_next, output_ofLastHiddenState)
         
         return output_ofLastHiddenState, logits_prev, logits_next

@@ -147,9 +147,9 @@ class STAGE1_G(nn.Module):
         # -> ngf/4 x 16 x 16
         self.upsample2 = upBlock_conv(ngf // 2, ngf // 4)
         # -> ngf/8 x 32 x 32
-        self.upsample3 = upBlock_conv(ngf // 4, ngf // 8,dil=True)
+        self.upsample3 = upBlock_conv(ngf // 4, ngf // 8)
         # -> ngf/16 x 64 x 64
-        self.upsample4 = upBlock_conv(ngf // 8, ngf // 16,dil=True)
+        self.upsample4 = upBlock_conv(ngf // 8, ngf // 16)
         # -> 3 x 64 x 64
         self.img = nn.Sequential(
             conv3x3(ngf // 16, ngf//32),
@@ -217,7 +217,6 @@ class STAGE1_D(nn.Module):
             # state size (ndf * 8) x 4 x 4)
             nn.LeakyReLU(0.2, inplace=True)
         )
-        # self.
         # self.get_cond_logits = D_GET_LOGITS(ndf, nef)
         # self.get_uncond_logits = None
         

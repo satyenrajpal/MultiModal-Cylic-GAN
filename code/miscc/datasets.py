@@ -25,7 +25,7 @@ class TextImageDataset(data.Dataset):
         self.transform = transform
         self.target_transform = target_transform
         self.imsize = imsize
-        # self.glove=self.load_embedding(emb_model)
+        self.glove,self.word2idx=self.load_embedding(emb_model)
         # if data_dir.find('birds') != -1:
         #     self.bbox = self.load_bbox()
         # else:
@@ -33,9 +33,9 @@ class TextImageDataset(data.Dataset):
         # split_dir = os.path.join(data_dir, split)
         self.cap = dset.CocoCaptions(root = data_dir,
                 annFile = ann_file)
-        self.vocab_file=vocab_file
+        # self.vocab_file=vocab_file
 
-        self.word_to_indx_dict = dict (zip(vocab_file.values(),vocab_file.keys()))
+        self.idx2word = dict (zip(self.word2idx.values(),self.word2idx.keys()))
 
         
         #print(len(caps_ind))       
@@ -104,18 +104,22 @@ class TextImageDataset(data.Dataset):
     #         caption_dict[key] = captions
     #     return caption_dict
 
-    # def load_embedding(self,emb_model):
-    #     """
-    #     creates a dictionary mapping words to vectors from a file in glove format.
-    #     """
-    #     with open(emb_model) as f:
-    #         glove = {}
-    #         for line in f.readlines():
-    #             values = line.split()
-    #             word = values[0]
-    #             vector = np.array(values[1:], dtype='float32')
-    #             glove[word] = vector
-    #     return glove
+    def load_embedding(self,emb_model):
+        """
+        creates a dictionary mapping words to vectors from a file in glove format.
+        """
+        word2idx={}
+        counter=0
+        with open(emb_model) as f:
+            glove = {}
+            for line in f.readlines():
+                values = line.split()
+                word = values[0]
+                word2idx[word]=counter
+                vector = np.array(values[1:], dtype='float32')
+                glove[word] = vector
+                counter+=1
+        return glove,word2idx
 
     # def get_embedding(self, captions):
     #     # #if embedding_type == 'cnn-rnn':
@@ -159,10 +163,10 @@ class TextImageDataset(data.Dataset):
             words_curr = descr.replace(".","").replace(",","").lower().split()
             caps_ind = []
             for word in words_curr:
-                if word in self.word_to_indx_dict.keys():
-                    caps_ind.append(int(self.word_to_indx_dict[word]))
+                if word in self.word2idx:
+                    caps_ind.append(int(self.word2idx[word]))
                 else:
-                    continue;
+                    continue
             captions_idx.append(np.array(caps_ind))
         return np.array(captions_idx)
 
