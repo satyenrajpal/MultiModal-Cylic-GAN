@@ -63,7 +63,9 @@ class CA_NET(nn.Module):
     # (https://github.com/pytorch/examples/blob/master/vae/main.py)
     def __init__(self):
         super(CA_NET, self).__init__()
-        self.t_dim = cfg.TEXT.DIMENSION
+        self.t_dim = cfg.TEXT.HIDDENSTATE
+        if cfg.CAP.USE:
+            self.t_dim=cfg.CAP.CONDITION_DIM
         self.c_dim = cfg.GAN.CONDITION_DIM
         self.fc = nn.Linear(self.t_dim, self.c_dim * 2, bias=True)
         self.relu = nn.ReLU()
@@ -112,11 +114,11 @@ class D_GET_LOGITS(nn.Module):
         if self.bcondition and c_code is not None:
             c_code = c_code.view(-1, self.ef_dim, 1, 1)
             c_code = c_code.repeat(1, 1, 4, 4)
+            
             # state size (ngf+egf) x 4 x 4
             h_c_code = torch.cat((h_code, c_code), 1)
         else:
             h_c_code = h_code
-
         output = self.outlogits(h_c_code)
         return output.view(-1)
 
@@ -128,6 +130,10 @@ class STAGE1_G(nn.Module):
         self.gf_dim = cfg.GAN.GF_DIM * 8
         self.ef_dim = cfg.GAN.CONDITION_DIM
         self.z_dim = cfg.Z_DIM
+        if cfg.CAP.USE:
+            self.z_dim=cfg.CAP.Z_DIM
+            # self.ef_dim = cfg.CAP.Z_DIM
+
         self.define_module()
 
     def define_module(self):
@@ -160,6 +166,7 @@ class STAGE1_G(nn.Module):
 
     def forward(self, text_embedding, noise):
         c_code, mu, logvar = self.ca_net(text_embedding)
+
         z_c_code = torch.cat((noise, c_code), 1)
         h_code = self.fc(z_c_code)
 
@@ -188,6 +195,8 @@ class STAGE1_D(nn.Module):
         super(STAGE1_D, self).__init__()
         self.df_dim = cfg.GAN.DF_DIM
         self.ef_dim = cfg.GAN.CONDITION_DIM
+        # if cfg.CAP.USE:
+        #     self.ef_dim = cfg.CAP.CONDITION_DIM
         self.new_arch=new_arch
         self.get_cond_logits = D_GET_LOGITS(self.df_dim, self.ef_dim)
         self.get_uncond_logits = None
@@ -359,3 +368,13 @@ class STAGE2_D(nn.Module):
         img_embedding = self.encode_img(image)
 
         return img_embedding
+
+class EMB(nn.Module):
+    def __init__(self,proj_dim,hidden_dim):
+        super(EMB, self).__init__()
+        self.proj_dim=proj_dim
+        self.fc=nn.Linear(hidden_dim,proj_dim,bias=True)
+        self.relu=nn.ReLU
+    
+    def forward(self,x):
+        return self.relu(self.fc(x))

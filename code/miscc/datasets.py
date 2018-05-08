@@ -25,7 +25,7 @@ class TextImageDataset(data.Dataset):
         self.transform = transform
         self.target_transform = target_transform
         self.imsize = imsize
-        self.glove,self.word2idx=self.load_embedding(emb_model)
+        self.glove=self.load_embedding(emb_model)
         # if data_dir.find('birds') != -1:
         #     self.bbox = self.load_bbox()
         # else:
@@ -33,9 +33,9 @@ class TextImageDataset(data.Dataset):
         # split_dir = os.path.join(data_dir, split)
         self.cap = dset.CocoCaptions(root = data_dir,
                 annFile = ann_file)
-        # self.vocab_file=vocab_file
-
-        self.idx2word = dict (zip(self.word2idx.values(),self.word2idx.keys()))
+        self.vocab_file=vocab_file
+        self.idx2word,self.emb=self.get_dict()
+        self.word2idx = dict (zip(self.idx2word.values(),self.idx2word.keys()))
 
         
         #print(len(caps_ind))       
@@ -46,7 +46,16 @@ class TextImageDataset(data.Dataset):
         # self.embeddings = self.load_embedding(split_dir, embedding_type)
         # self.class_id = self.load_class_id(split_dir, len(self.filenames))
         # self.captions = self.load_all_captions()
-
+    def get_dict(self):
+        temp={}
+        emb={}
+        counter=0
+        for _,value in self.vocab_file.items():
+            if value in self.glove:
+                temp[counter]=value
+                emb[value]=self.glove.get(value)
+                counter+=1
+        return temp,emb
     # def get_img(self, img_path, bbox):
     #     img = Image.open(img_path).convert('RGB')
     #     width, height = img.size
@@ -109,17 +118,17 @@ class TextImageDataset(data.Dataset):
         creates a dictionary mapping words to vectors from a file in glove format.
         """
         word2idx={}
-        counter=0
+        # counter=0
         with open(emb_model) as f:
             glove = {}
             for line in f.readlines():
                 values = line.split()
                 word = values[0]
-                word2idx[word]=counter
+                # word2idx[word]=counter
                 vector = np.array(values[1:], dtype='float32')
                 glove[word] = vector
-                counter+=1
-        return glove,word2idx
+                # counter+=1
+        return glove
 
     # def get_embedding(self, captions):
     #     # #if embedding_type == 'cnn-rnn':

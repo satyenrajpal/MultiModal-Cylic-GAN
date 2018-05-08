@@ -33,3 +33,6 @@ GAN:
 
 TEXT:
     DIMENSION: 50
+CAP:
+    USE: True
+    Z_DIM: 512

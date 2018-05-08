@@ -56,7 +56,10 @@ __C.GAN.R_NUM = 4
 
 __C.TEXT = edict()
 __C.TEXT.DIMENSION = 50
-
+__C.TEXT.HIDDENSTATE = 128
+__C.CAP=edict()
+__C.CAP.USE=False
+__C.CAP.Z_DIM=512
 
 def _merge_a_into_b(a, b):
     """Merge config dictionary a into config dictionary b, clobbering the

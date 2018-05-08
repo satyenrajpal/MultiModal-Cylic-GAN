@@ -100,7 +100,7 @@ def parse_args():
         dest='caption_model')
     parser.add_argument('--manualSeed', type=int, help='manual seed',dest='manualSeed')
     parser.add_argument('--new_arch',type=int,help='To use new arch or not',dest='new_arch',default=0)
-    parser.add_argument('--use_cap_model',type=int, help='To use(1) Captioning Model or not (0)',
+    parser.add_argument('--use_cap_model',type=int, help='To use (1) Captioning Model or not (0)',
         dest='cap_flag',default=0)
     args = parser.parse_args()
     return args
@@ -139,14 +139,18 @@ if __name__ == "__main__":
                  (opt.output_dir,cfg.DATASET_NAME, cfg.CONFIG_NAME, timestamp)
     #mkdir_p(output_dir)     
     num_gpu = len(cfg.GPU_ID.split(','))
-    vocab=None
+    vocab_cap=None
     my_resnet=None    
     cap_model=None
-
+    vocab=None
     #Load image captioning model here
+    if opt.vocab_file is not None:
+        with open(opt.vocab_file, 'rb') as handle:
+            vocab = pickle.load(handle)
+
     if opt.cap_flag:
         with open(opt.infos_path,'rb') as f:
-             infos = cPickle.load(f,encoding='bytes')
+             infos = cPickle.load(f)
 
         ignore = ["id", "batch_size", "beam_size", "start_from", "language_eval"]
         for k in vars(infos[b'opt']).keys():
@@ -155,12 +159,8 @@ if __name__ == "__main__":
                     assert vars(opt)[k] == vars(infos[b'opt'])[k], k + ' option not consistent'
                 else:
                     vars(opt).update({k: vars(infos[b'opt'])[k]}) # copy over options from model
-
-        if opt.vocab_file is not None:
-            with open(opt.vocab_file, 'rb') as handle:
-                vocab = pickle.load(handle)
     
-        vars(opt).update({'vocab_size':5257})
+        vars(opt).update({'vocab_size':9487})
         vars(opt).update({'input_encoding_size':512})#input_encoding_size=512
         vars(opt).update({'att_feat_size':2048})#=2048, 
         vars(opt).update({'att_hid_size':512})#att_hid_size=512 , 
@@ -176,7 +176,7 @@ if __name__ == "__main__":
         seq_length=16
         seq_per_img=5
         
-        vocab = infos['vocab'] # ix -> word mapping
+        vocab_cap = infos['vocab'] # ix -> word mapping
         cap_model = models.setup(opt)
         cap_model.load_state_dict(torch.load(opt.model))
         cap_model.cuda()
@@ -210,7 +210,7 @@ if __name__ == "__main__":
             drop_last=True, shuffle=True, num_workers=int(cfg.WORKERS))
 
         algo = GANTrainer(output_dir, cap_model,vocab,eval_utils,my_resnet,
-            dataset.word2idx,dataset.glove,dataset.idx2word, eval_kwargs=vars(opt))
+            dataset.word2idx,dataset.emb,dataset.idx2word,vocab_cap=vocab_cap, eval_kwargs=vars(opt))
         algo.train(dataloader, cfg.STAGE)
     else:
         datapath= '%s/test/val_captions.t7' % (cfg.DATA_DIR)

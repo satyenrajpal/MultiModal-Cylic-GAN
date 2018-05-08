@@ -12,27 +12,28 @@ import torch.nn.utils.weight_norm as weightNorm
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 import torch.autograd as autograd
 import torch
+from miscc.config import cfg
 
 class STEncoder(nn.Module):
-    def __init__(self, num_layers, hidden_size, bidirection, embedding_dim):
+    def __init__(self, input_dim,num_layers, hidden_size, bidirection, embedding_dim):
         super(STEncoder, self).__init__()
         
         self.num_layers = num_layers
-        self.thought_size = hidden_size
+        self.hidden_size = hidden_size
         self.direction = 1
         if bidirection:
             self.direction = 2
         
         self.embedding_dim = embedding_dim
         
-        self.rnn = nn.LSTM(input_size=128, hidden_size=self.thought_size, num_layers=self.num_layers, batch_first=False, bidirectional=True)
+        self.rnn = nn.LSTM(input_size=input_dim, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=False, bidirectional=True)
         
     def hidden_init(self, batch_size):      
         if torch.cuda.is_available():
-            return (autograd.Variable(torch.zeros(self.direction*self.num_layers, batch_size, self.thought_size).cuda()),
-                    autograd.Variable(torch.zeros(self.direction*self.num_layers, batch_size, self.thought_size).cuda()))
-        return (autograd.Variable(torch.zeros(self.direction*self.num_layers, batch_size, self.thought_size)),
-                autograd.Variable(torch.zeros(self.direction*self.num_layers, batch_size, self.thought_size))) 
+            return (autograd.Variable(torch.zeros(self.direction*self.num_layers, batch_size, self.hidden_size).cuda()),
+                    autograd.Variable(torch.zeros(self.direction*self.num_layers, batch_size, self.hidden_size).cuda()))
+        return (autograd.Variable(torch.zeros(self.direction*self.num_layers, batch_size, self.hidden_size)),
+                autograd.Variable(torch.zeros(self.direction*self.num_layers, batch_size, self.hidden_size))) 
         
     def forward(self, input, inputLenghts):
         packedInputX = pack_padded_sequence(input, inputLenghts, batch_first = False)
@@ -55,6 +56,7 @@ class STDuoDecoderAttn(nn.Module):
         #Hidden units
         hidden1 = torch.zeros(1, self.hidden_size)
         hidden2 = torch.zeros(1, self.hidden_size)
+        
         if torch.cuda.is_available():
             hidden1 = hidden1.cuda()
             hidden2 = hidden2.cuda()
@@ -63,8 +65,8 @@ class STDuoDecoderAttn(nn.Module):
         self.hidden2 = nn.Parameter(hidden2)
         
         ##LSTM cells for the decoder
-        self.lstmcell_prev = nn.LSTMCell(128+128, self.hidden_size)
-        self.lstmcell_next = nn.LSTMCell(128+128, self.hidden_size)
+        self.lstmcell_prev = nn.LSTMCell(self.thought_size+embedding_dim, self.hidden_size)
+        self.lstmcell_next = nn.LSTMCell(self.thought_size+embedding_dim, self.hidden_size)
         
         self.wordProject = nn.Linear(in_features=self.hidden_size, out_features=self.num_embeddings)
         self.init_weights()
@@ -80,6 +82,7 @@ class STDuoDecoderAttn(nn.Module):
         
         c10 = Variable(torch.zeros(inputPrev.size(1), self.hidden_size), requires_grad=False)
         c20 = Variable(torch.zeros(inputNext.size(1), self.hidden_size), requires_grad=False)        
+        
         if torch.cuda.is_available():
             c10 = Variable(torch.zeros(inputPrev.size(1), self.hidden_size).cuda(), requires_grad=False)
             c20 = Variable(torch.zeros(inputNext.size(1), self.hidden_size).cuda(), requires_grad=False)
@@ -131,7 +134,7 @@ class UniSKIP_variant(nn.Module):
         self.idx2word=idx2word
         # self.wordembed = nn.Embedding(num_embeddings=self.vocab_size, embedding_dim=self.embedding_dim)
         # self.init_weights()
-        self.linear = nn.Linear(in_features=50, out_features=128) 
+        self.linear = nn.Linear(in_features=embedding_dim, out_features=cfg.TEXT.HIDDENSTATE) 
         
     # def init_weights(self):
     #     initrange = 0.1
@@ -154,7 +157,7 @@ class UniSKIP_variant(nn.Module):
 
         # word_embed_curr = F.tanh(self.wordembed(inputCurr))
 
-        word_embed_curr=autograd.Variable(self.get_embeddings(inputCurr), requires_grad=False)
+        word_embed_curr=autograd.Variable(self.get_embeddings(inputCurr),requires_grad=False)
 
         if torch.cuda.is_available():
             word_embed_curr=word_embed_curr.cuda()

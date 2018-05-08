@@ -58,7 +58,7 @@ def compute_discriminator_loss(netD, real_imgs, fake_imgs,
         errD_fake = (errD_fake + uncond_errD_fake) / 2.
     else:
         errD = errD_real + (errD_fake + errD_wrong) * 0.5
-    return errD, errD_real.data[0], errD_wrong.data[0], errD_fake.data[0]
+    return errD, errD_real.item(), errD_wrong.item(), errD_fake.item()
 
 
 def compute_generator_loss(netD, fake_imgs, real_labels, conditions, gpus):
@@ -93,7 +93,7 @@ def weights_init(m):
 
 
 #############################
-def save_img_results(data_img, fake, epoch, image_dir,captions):
+def save_img_results(data_img, fake, epoch, image_dir,captions,gen_captions):
     # word='lol'
     num = 10
 
@@ -112,11 +112,19 @@ def save_img_results(data_img, fake, epoch, image_dir,captions):
         vutils.save_image(
             fake.data, '%s/lr_fake_schangesamples_epoch_%03d.png' %
             (image_dir, epoch), normalize=True)
-    with open('%s/captions_out.txt'% image_dir,'a+') as file_:
-        file_.write(str(epoch)+'\n')
-        # file_.write(str(word)+'\n')
-        [file_.write(str(x).lower().replace(".","")+'\n') for x in captions]
-        file_.write('\n')
+    
+    if captions is not None:
+        with open('%s/captions_out.txt'% image_dir,'a+') as file_:
+            file_.write(str(epoch)+'\n')
+            # file_.write(str(word)+'\n')
+            [file_.write(str(x).lower().replace(".","")+'\n') for x in captions]
+            file_.write('\n')
+    if gen_captions is not None:
+        with open('%s/gen_captions.txt'% image_dir,'a+') as file_:
+            file_.write(str(epoch)+'\n')
+            # file_.write(str(word)+'\n')
+            [file_.write(str(x).lower().replace(".","")+'\n') for x in gen_captions]
+            file_.write('\n')
 
 
 def save_model(netG, netD, ctModel, epoch, model_dir):
