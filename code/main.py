@@ -1,5 +1,6 @@
 from __future__ import print_function
-import torch.backends.cudnn as cudnn
+# import torch.backends.cudnn as cudnn
+import tensorflow as tf
 import torch
 import torchvision.transforms as transforms
 
@@ -22,7 +23,7 @@ from miscc.config import cfg, cfg_from_file
 from miscc.utils import mkdir_p
 from trainer import GANTrainer
 from six.moves import cPickle
-
+import pickle
 def collate_fn(data):
     
     ## Sorting based on the utternce lenght
@@ -97,7 +98,8 @@ def parse_args():
                 help='Path to ImageCaptioning dir')
     parser.add_argument('--vocab_file', type=str, default=os.getcwd(),
         help='manual seed',dest='vocab_file')
-    
+    parser.add_argument('--caption_model',type=str,default='topdown',
+        dest='caption_model')
     parser.add_argument('--manualSeed', type=int, help='manual seed',dest='manualSeed')
     args = parser.parse_args()
     return args
@@ -140,20 +142,41 @@ if __name__ == "__main__":
     num_gpu = len(cfg.GPU_ID.split(','))
 
     #Load image captioning model here
-    with open(opt.infos_path) as f:
-        infos = cPickle.load(f)
+    # with open(opt.infos_path,'rb') as f:
+    #      infos = cPickle.load(f,encoding='bytes')
 
-    ignore = ["id", "batch_size", "beam_size", "start_from", "language_eval"]
-    for k in vars(infos['opt']).keys():
-        if k not in ignore:
-            if k in vars(opt):
-                assert vars(opt)[k] == vars(infos['opt'])[k], k + ' option not consistent'
-            else:
-                vars(opt).update({k: vars(infos['opt'])[k]}) # copy over options from model
+    # ignore = ["id", "batch_size", "beam_size", "start_from", "language_eval"]
+    # for k in vars(infos[b'opt']).keys():
+    #     if k not in ignore:
+    #         if k in vars(opt):
+    #             assert vars(opt)[k] == vars(infos[b'opt'])[k], k + ' option not consistent'
+    #         else:
+    #             vars(opt).update({k: vars(infos[b'opt'])[k]}) # copy over options from model
 
-
+    with open(opt.vocab_file, 'rb') as handle:
+        vocab = cPickle.load(handle)
+    vars(opt).update({'vocab_size':len(vocab)})
+    vars(opt).update({'input_encoding_size':512})#input_encoding_size=512
+    vars(opt).update({'att_feat_size':2048})#=2048, 
+    vars(opt).update({'att_hid_size':512})#att_hid_size=512 , 
+    vars(opt).update({'rnn_size':512})#rnn_size=512
+    vars(opt).update({'rnn_type':'lstm'})#rnn_type='lstm',
+    
+    vars(opt).update({'seq_length':16})
+    vars(opt).update({'seq_per_img':5})
+    vars(opt).update({'num_layers':1})
+    vars(opt).update({'drop_prob_lm':0.5})
+    vars(opt).update({'fc_feat_size':2048})
+    
+#    seq_length=16
+ #    seq_per_img=5
+    
     # vocab = infos['vocab'] # ix -> word mapping
-
+# (, batch_size=10, beam_size=1, 
+#     caption_model='topdown', checkpoint_path='log_td', current_lr=0.00013107200000000006,
+#      drop_prob_lm=0.5, fc_feat_size=2048, grad_clip=0.1, id='td', input_att_dir='data/cocotalk_att',
+#      9, optim_beta=0.999, optim_epsilon=1e-08,  save_checkpoint_every=3000, scheduled_sampling_increase_every=5, scheduled_sampling_increase_prob=0.05, scheduled_sampling_max_prob=0.25, scheduled_sampling_start=0, self_critical_after=-1, seq_length=,, ss_prob=0.2, 
+     # start_from='log_td', train_only=0, val_images_use=5000, vocab_size=9487, weight_decay=0
     cap_model = models.setup(opt)
     cap_model.load_state_dict(torch.load(opt.model))
     cap_model.cuda()
@@ -170,7 +193,7 @@ if __name__ == "__main__":
         print("No vocab file input")
         sys.exit()
     with open(opt.vocab_file, 'rb') as handle:
-        vocab = pickle.load(handle)
+        vocab = cPickle.load(handle)
     
 
     if cfg.TRAIN.FLAG:
