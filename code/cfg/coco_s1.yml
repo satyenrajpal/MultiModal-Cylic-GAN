@@ -36,3 +36,4 @@ TEXT:
 CAP:
     USE: True
     Z_DIM: 512
+    HIDDENSTATE: 128
