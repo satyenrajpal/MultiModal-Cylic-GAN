@@ -33,7 +33,7 @@ class TextImageDataset(data.Dataset):
         # split_dir = os.path.join(data_dir, split)
         self.cap = dset.CocoCaptions(root = data_dir,
                 annFile = ann_file)
-        
+        self.idx2word=None
         # self.filenames = self.load_filenames(split_dir)
         # self.embeddings = self.load_embedding(split_dir, embedding_type)
         # self.class_id = self.load_class_id(split_dir, len(self.filenames))
@@ -100,15 +100,21 @@ class TextImageDataset(data.Dataset):
         """
         creates a dictionary mapping words to vectors from a file in glove format.
         """
+        word2idx={}
+        counter=0
         with open(emb_model) as f:
             glove = {}
             for line in f.readlines():
                 values = line.split()
                 word = values[0]
+                word2idx[counter]=word
                 vector = np.array(values[1:], dtype='float32')
                 glove[word] = vector
+                counter+=1
+        self.idx2word=idx2word
         return glove
 
+    
     def get_embedding(self, captions):
         # #if embedding_type == 'cnn-rnn':
         #     embedding_filename = '/char-CNN-RNN-embeddings.pickle'
