@@ -20,21 +20,21 @@ import torchvision.transforms as transforms
 
 class TextImageDataset(data.Dataset):
     def __init__(self, data_dir, ann_file, vocab_file=None, embedding_type='cnn-rnn',
-                 emb_model=None,imsize=64, transform=None, target_transform=None):
+                 emb_model=None, imsize=64, transform=None, target_transform=None):
 
         self.transform = transform
         self.target_transform = target_transform
         self.imsize = imsize
-        self.glove=self.load_embedding(emb_model)
+        self.glove_emb = self.load_embedding(emb_model)
         # if data_dir.find('birds') != -1:
         #     self.bbox = self.load_bbox()
         # else:
         #     self.bbox = None
         # split_dir = os.path.join(data_dir, split)
-        self.cap = dset.CocoCaptions(root = data_dir,
-                annFile = ann_file)
-        self.vocab_file=vocab_file
-        self.idx2word,self.emb=self.get_dict()
+        self.captions = dset.CocoCaptions(root = data_dir,
+                                          annFile = ann_file)
+        self.vocab_file = vocab_file
+        self.idx2word, self.emb=self.get_dict()
         self.word2idx = dict (zip(self.idx2word.values(),self.idx2word.keys()))
 
         
@@ -46,16 +46,18 @@ class TextImageDataset(data.Dataset):
         # self.embeddings = self.load_embedding(split_dir, embedding_type)
         # self.class_id = self.load_class_id(split_dir, len(self.filenames))
         # self.captions = self.load_all_captions()
+    
     def get_dict(self):
         temp={}
         emb={}
         counter=0
         for _,value in self.vocab_file.items():
-            if value in self.glove:
+            if value in self.glove_emb:
                 temp[counter]=value
-                emb[value]=self.glove.get(value)
+                emb[value]=self.glove_emb.get(value)
                 counter+=1
         return temp,emb
+
     # def get_img(self, img_path, bbox):
     #     img = Image.open(img_path).convert('RGB')
     #     width, height = img.size
@@ -190,7 +192,7 @@ class TextImageDataset(data.Dataset):
         # else:
         # bbox = None
         # data_dir = self.data_dir
-        img,captions=self.cap[index]
+        img, captions=self.captions[index]
         no_of_captions = len(captions)
 
         cap = np.random.randint(0, no_of_captions)
@@ -205,6 +207,7 @@ class TextImageDataset(data.Dataset):
         img=np.array(img)
         if self.transform is not None:
             img = self.transform(img)
+        
         # print("Image Size: ", img.shape)    
         # embeddings,sentence = self.get_embedding(captions)
         # img_name = '%s/images/%s.jpg' % (data_dir, key)

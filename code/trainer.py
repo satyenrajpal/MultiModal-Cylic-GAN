@@ -25,6 +25,7 @@ from ConcurrentThoughtsModel import *
 from logger import *
 # from model import EMB
 # import eval_utils as eval_utils
+
 sents=None
 def convert_to_index(captions, word_to_indx_dict):
     captions_idx = []
@@ -42,6 +43,7 @@ def convert_to_index(captions, word_to_indx_dict):
 class GANTrainer(object):
     def __init__(self, output_dir,cap_model,vocab,eval_utils,my_resnet,
     word2idx,glove_model,idx2word,vocab_cap=None,eval_kwargs={}):#
+        
         if cfg.TRAIN.FLAG:
             self.model_dir = os.path.join(output_dir, 'Model')
             self.image_dir = os.path.join(output_dir, 'Image')
@@ -52,7 +54,8 @@ class GANTrainer(object):
             mkdir_p(self.log_dir)
             mkdir_p(self.test_img_dir)
             #self.summary_writer = FileWriter(self.log_dir)
-        self.cap_model=cap_model
+        
+        self.cap_model = None
         self.max_epoch = cfg.TRAIN.MAX_EPOCH
         self.snapshot_interval = 5
         self.gpus=None
@@ -182,14 +185,15 @@ class GANTrainer(object):
             netD.cuda()
         return netG, netD
 
-
     def train(self, data_loader, stage=1):
+        
         logger = Logger('./logs_CS_GAN')       
         image_transform_train = transforms.Compose([
             transforms.ToPILImage(),
             transforms.Resize([64, 64]),
             transforms.ToTensor()])
-        CT_update=35 if cfg.CTModel== '' else 0 
+        
+        CT_update = 35 if cfg.CTModel == '' else 0 
         print("Training CT model for ",CT_update)
         
         if stage == 1:
@@ -211,6 +215,7 @@ class GANTrainer(object):
 
         real_labels = Variable(torch.FloatTensor(batch_size).fill_(1))
         fake_labels = Variable(torch.FloatTensor(batch_size).fill_(0))
+        
         #Gaussian noise input added to the input images to the disc
         noise_input= Variable(torch.zeros(batch_size,3,cfg.FAKEIMSIZE,cfg.FAKEIMSIZE))
         if cfg.CUDA:

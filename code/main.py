@@ -15,8 +15,10 @@ import dateutil.tz
 from collections import namedtuple
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from torch.utils.data.dataloader import _use_shared_memory
-dir_path = (os.path.abspath(os.path.join(os.path.realpath(__file__), './.')))
-sys.path.append(dir_path)
+
+# dir_path = (os.path.abspath(os.path.join(os.path.realpath(__file__), './.')))
+# sys.path.append(dir_path)
+
 import pickle
 from miscc.datasets import TextImageDataset
 from miscc.config import cfg, cfg_from_file
@@ -24,10 +26,8 @@ from miscc.utils import mkdir_p
 from trainer import GANTrainer
 from six.moves import cPickle
 import pickle
-<<<<<<< HEAD
 
-=======
->>>>>>> e1970ddac280f1dd49f261189ced286a95b0701b
+
 def collate_fn(data):
     
     ## Sorting based on the utternce lenght
@@ -115,55 +115,54 @@ if __name__ == "__main__":
     if opt.gpu_id != -1:
         cfg.GPU_ID = opt.gpu_id
     
-    sys.path.append(os.path.abspath(opt.cap_dir))
-    sys.path.append(os.path.abspath(os.path.join(opt.cap_dir,'misc')))
+    # sys.path.append(os.path.abspath(opt.cap_dir))
+    # sys.path.append(os.path.abspath(os.path.join(opt.cap_dir,'misc')))
 
-    import opts as opts
-    import models as models
-    from dataloader import *
-    from dataloaderraw import *
-    import eval_utils as eval_utils
-    import misc.utils as utils
-    import resnet
-    from resnet_utils import myResnet
-    if torch.cuda.is_available():
-        print("Using CUDA")
-    # print('Using config:')
-    # pprint.pprint(cfg)
-    if opt.manualSeed is None:
-        opt.manualSeed = random.randint(1, 10000)
-    random.seed(opt.manualSeed)
-    torch.manual_seed(opt.manualSeed)
-    if cfg.CUDA:
-        torch.cuda.manual_seed_all(opt.manualSeed)
-    now = datetime.datetime.now(dateutil.tz.tzlocal())
-    timestamp = now.strftime('%Y_%m_%d_%H_%M_%S')
-    output_dir = '%s/%s_%s_%s' % \
-                 (opt.output_dir,cfg.DATASET_NAME, cfg.CONFIG_NAME, timestamp)
-    #mkdir_p(output_dir)     
-    num_gpu = len(cfg.GPU_ID.split(','))
-    vocab_cap=None
-    my_resnet=None    
-    cap_model=None
-    vocab=None
-    #Load image captioning model here
-<<<<<<< HEAD
+    # import opts as opts
+    # import models as models
+    # from dataloader import *
+    # from dataloaderraw import *
+    # import eval_utils as eval_utils
+    # import misc.utils as utils
+    # import resnet
+    # from resnet_utils import myResnet
+    # if torch.cuda.is_available():
+    #     print("Using CUDA")
+    # # print('Using config:')
+    # # pprint.pprint(cfg)
+    # if opt.manualSeed is None:
+    #     opt.manualSeed = random.randint(1, 10000)
+    # random.seed(opt.manualSeed)
+    # torch.manual_seed(opt.manualSeed)
+    # if cfg.CUDA:
+    #     torch.cuda.manual_seed_all(opt.manualSeed)
+    # now = datetime.datetime.now(dateutil.tz.tzlocal())
+    # timestamp = now.strftime('%Y_%m_%d_%H_%M_%S')
+    # output_dir = '%s/%s_%s_%s' % \
+    #              (opt.output_dir,cfg.DATASET_NAME, cfg.CONFIG_NAME, timestamp)
+    # #mkdir_p(output_dir)     
+    # num_gpu = len(cfg.GPU_ID.split(','))
+    # vocab_cap=None
+    # my_resnet=None    
+    # cap_model=None
+    # vocab=None
+    # #Load image captioning model here
+
     if opt.vocab_file is not None:
         with open(opt.vocab_file, 'rb') as handle:
             vocab = pickle.load(handle)
 
-    if opt.cap_flag:
-        with open(opt.infos_path,'rb') as f:
-             infos = cPickle.load(f)
+    # if opt.cap_flag:
+    #     with open(opt.infos_path,'rb') as f:
+    #          infos = cPickle.load(f)
 
-        ignore = ["id", "batch_size", "beam_size", "start_from", "language_eval"]
-        for k in vars(infos[b'opt']).keys():
-            if k not in ignore:
-                if k in vars(opt):
-                    assert vars(opt)[k] == vars(infos[b'opt'])[k], k + ' option not consistent'
-                else:
-                    vars(opt).update({k: vars(infos[b'opt'])[k]}) # copy over options from model
-=======
+        # ignore = ["id", "batch_size", "beam_size", "start_from", "language_eval"]
+        # for k in vars(infos[b'opt']).keys():
+        #     if k not in ignore:
+        #         if k in vars(opt):
+        #             assert vars(opt)[k] == vars(infos[b'opt'])[k], k + ' option not consistent'
+        #         else:
+        #             vars(opt).update({k: vars(infos[b'opt'])[k]}) # copy over options from model
     # with open(opt.infos_path,'rb') as f:
     #      infos = cPickle.load(f,encoding='bytes')
 
@@ -175,20 +174,20 @@ if __name__ == "__main__":
     #         else:
     #             vars(opt).update({k: vars(infos[b'opt'])[k]}) # copy over options from model
 
-    with open(opt.vocab_file, 'rb') as handle:
-        vocab = cPickle.load(handle)
-    vars(opt).update({'vocab_size':len(vocab)})
-    vars(opt).update({'input_encoding_size':512})#input_encoding_size=512
-    vars(opt).update({'att_feat_size':2048})#=2048, 
-    vars(opt).update({'att_hid_size':512})#att_hid_size=512 , 
-    vars(opt).update({'rnn_size':512})#rnn_size=512
-    vars(opt).update({'rnn_type':'lstm'})#rnn_type='lstm',
+    # with open(opt.vocab_file, 'rb') as handle:
+    #     vocab = cPickle.load(handle)
+    # vars(opt).update({'vocab_size':len(vocab)})
+    # vars(opt).update({'input_encoding_size':512})#input_encoding_size=512
+    # vars(opt).update({'att_feat_size':2048})#=2048, 
+    # vars(opt).update({'att_hid_size':512})#att_hid_size=512 , 
+    # vars(opt).update({'rnn_size':512})#rnn_size=512
+    # vars(opt).update({'rnn_type':'lstm'})#rnn_type='lstm',
     
-    vars(opt).update({'seq_length':16})
-    vars(opt).update({'seq_per_img':5})
-    vars(opt).update({'num_layers':1})
-    vars(opt).update({'drop_prob_lm':0.5})
-    vars(opt).update({'fc_feat_size':2048})
+    # vars(opt).update({'seq_length':16})
+    # vars(opt).update({'seq_per_img':5})
+    # vars(opt).update({'num_layers':1})
+    # vars(opt).update({'drop_prob_lm':0.5})
+    # vars(opt).update({'fc_feat_size':2048})
     
 #    seq_length=16
  #    seq_per_img=5
@@ -199,53 +198,52 @@ if __name__ == "__main__":
 #      drop_prob_lm=0.5, fc_feat_size=2048, grad_clip=0.1, id='td', input_att_dir='data/cocotalk_att',
 #      9, optim_beta=0.999, optim_epsilon=1e-08,  save_checkpoint_every=3000, scheduled_sampling_increase_every=5, scheduled_sampling_increase_prob=0.05, scheduled_sampling_max_prob=0.25, scheduled_sampling_start=0, self_critical_after=-1, seq_length=,, ss_prob=0.2, 
      # start_from='log_td', train_only=0, val_images_use=5000, vocab_size=9487, weight_decay=0
-    cap_model = models.setup(opt)
-    cap_model.load_state_dict(torch.load(opt.model))
-    cap_model.cuda()
-    cap_model.eval()
-    #ResNet MODEL
-    cnn_model = 'resnet101'
-    my_resnet = getattr(resnet, cnn_model)()
-    my_resnet.load_state_dict(torch.load(opt.cnn_model_dir))
-    my_resnet = myResnet(my_resnet)
-    my_resnet.cuda()
-    my_resnet.eval()
+    # cap_model = models.setup(opt)
+    # cap_model.load_state_dict(torch.load(opt.model))
+    # cap_model.cuda()
+    # cap_model.eval()
+    # #ResNet MODEL
+    # cnn_model = 'resnet101'
+    # my_resnet = getattr(resnet, cnn_model)()
+    # my_resnet.load_state_dict(torch.load(opt.cnn_model_dir))
+    # my_resnet = myResnet(my_resnet)
+    # my_resnet.cuda()
+    # my_resnet.eval()
     
-    if opt.vocab_file is None:
-        print("No vocab file input")
-        sys.exit()
-    with open(opt.vocab_file, 'rb') as handle:
-        vocab = cPickle.load(handle)
->>>>>>> e1970ddac280f1dd49f261189ced286a95b0701b
+    # if opt.vocab_file is None:
+    #     print("No vocab file input")
+    #     sys.exit()
+    # with open(opt.vocab_file, 'rb') as handle:
+    #     vocab = cPickle.load(handle)
     
-        vars(opt).update({'vocab_size':9487})
-        vars(opt).update({'input_encoding_size':512})#input_encoding_size=512
-        vars(opt).update({'att_feat_size':2048})#=2048, 
-        vars(opt).update({'att_hid_size':512})#att_hid_size=512 , 
-        vars(opt).update({'rnn_size':512})#rnn_size=512
-        vars(opt).update({'rnn_type':'lstm'})#rnn_type='lstm',
+    #     vars(opt).update({'vocab_size':9487})
+    #     vars(opt).update({'input_encoding_size':512})#input_encoding_size=512
+    #     vars(opt).update({'att_feat_size':2048})#=2048, 
+    #     vars(opt).update({'att_hid_size':512})#att_hid_size=512 , 
+    #     vars(opt).update({'rnn_size':512})#rnn_size=512
+    #     vars(opt).update({'rnn_type':'lstm'})#rnn_type='lstm',
         
-        vars(opt).update({'seq_length':16})
-        vars(opt).update({'seq_per_img':5})
-        vars(opt).update({'num_layers':1})
-        vars(opt).update({'drop_prob_lm':0.5})
-        vars(opt).update({'fc_feat_size':2048})
+    #     vars(opt).update({'seq_length':16})
+    #     vars(opt).update({'seq_per_img':5})
+    #     vars(opt).update({'num_layers':1})
+    #     vars(opt).update({'drop_prob_lm':0.5})
+    #     vars(opt).update({'fc_feat_size':2048})
         
-        seq_length=16
-        seq_per_img=5
+    #     seq_length=16
+    #     seq_per_img=5
         
-        vocab_cap = infos['vocab'] # ix -> word mapping
-        cap_model = models.setup(opt)
-        cap_model.load_state_dict(torch.load(opt.model))
-        cap_model.cuda()
-        cap_model.eval()
-        #ResNet MODEL
-        cnn_model = 'resnet101'
-        my_resnet = getattr(resnet, cnn_model)()
-        my_resnet.load_state_dict(torch.load(opt.cnn_model_dir))
-        my_resnet = myResnet(my_resnet)
-        my_resnet.cuda()
-        my_resnet.eval()
+    #     vocab_cap = infos['vocab'] # ix -> word mapping
+    #     cap_model = models.setup(opt)
+    #     cap_model.load_state_dict(torch.load(opt.model))
+    #     cap_model.cuda()
+    #     cap_model.eval()
+    #     #ResNet MODEL
+    #     cnn_model = 'resnet101'
+    #     my_resnet = getattr(resnet, cnn_model)()
+    #     my_resnet.load_state_dict(torch.load(opt.cnn_model_dir))
+    #     my_resnet = myResnet(my_resnet)
+    #     my_resnet.cuda()
+    #     my_resnet.eval()
 
 # (, batch_size=10, beam_size=1, 
 #     caption_model='topdown', checkpoint_path='log_td', current_lr=0.00013107200000000006,
